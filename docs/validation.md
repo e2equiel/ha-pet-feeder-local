@@ -4,7 +4,7 @@ One privately owned V330L-DU4L-VS / original application 68.00.09 has been used 
 
 | Check | Evidence |
 | --- | --- |
-| HA 2026.11.2 / Python 3.14 test suite, 0.2 | 66 passing tests; 100% line coverage in each of 13 production modules |
+| HA 2026.11.2 / Python 3.14 test suite, 0.2 | 67 passing tests; 100% line coverage in each of 13 production modules |
 | Static typing, 0.2 | mypy strict passes all production modules; Ruff passes |
 | Real HA lifecycle tests, 0.2 | GUI setup, duplicate/incorrect identity, discovery address changes, reauth, reconfigure, all six platforms, service registration, errors, availability, diagnostics, Repairs and unload |
 | Frontend tests, 0.2 | Portion selection separate from Serve, disabled new meals, stale revisions, automatic entity links, visual editor and unavailable controls |

@@ -13,6 +13,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -74,3 +75,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: FeederConfigEntry) -> bo
 async def async_unload_entry(hass: HomeAssistant, entry: FeederConfigEntry) -> bool:
     """Unload entities and coordinator listeners without restarting HA."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: FeederConfigEntry) -> None:
+    """Remove this feeder's issue when its configuration is deleted."""
+    ir.async_delete_issue(hass, DOMAIN, entry.entry_id + "_mcu")

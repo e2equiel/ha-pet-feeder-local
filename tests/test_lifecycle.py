@@ -152,3 +152,14 @@ async def test_restored_portions_never_feed(hass,entry,client,state,value):
         coordinator=await setup(hass,entry)
     assert coordinator.selected_portions==value
     client.async_feed.assert_not_awaited()
+
+async def test_removal_clears_only_this_feeders_repair(hass,entry,client):
+    coordinator=await setup(hass,entry)
+    client.async_get_status.return_value={**STATUS,'mcu_connected':False}
+    await coordinator.async_refresh()
+    registry=ir.async_get(hass)
+    assert ('pet_feeder_local',entry.entry_id+'_mcu') in registry.issues
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert ('pet_feeder_local',entry.entry_id+'_mcu') not in registry.issues
+    client.async_feed.assert_not_awaited()

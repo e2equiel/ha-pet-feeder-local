@@ -16,11 +16,11 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/e2equiel/ha-pet-feeder-local/issues",
   "requirements": [],
-  "version": "0.2.0",
   "ssdp": [
     {
       "st": "urn:pet-feeder-local:device:Feeder:1",
       "manufacturer": "Pet Feeder Local"
     }
-  ]
+  ],
+  "version": "0.2.0"
 }

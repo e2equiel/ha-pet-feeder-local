@@ -1,6 +1,6 @@
 # Validation scope
 
-One privately owned V330L-DU4L-VS / original application 68.00.09 has been used for hardware verification. Results below distinguish the installed 0.1 prototype from the 0.2 community package. No result asserts that food physically reached the bowl.
+One privately owned V330L-DU4L-VS / original application 68.00.09 has been used for hardware verification. Results below distinguish the 0.1 prototype, isolated tests of 0.2, and the published 0.2.1 package installed in live HA. No result asserts that food physically reached the bowl.
 
 | Check | Evidence |
 | --- | --- |
@@ -15,8 +15,13 @@ One privately owned V330L-DU4L-VS / original application 68.00.09 has been used 
 | Local camera, 0.1 | Main HEVC stream decoded directly and through go2rtc; HA snapshot/live view and Frigate 0.18.3 decoding passed |
 | Persistent device reboot, 0.1 | Overlay, authenticated API, saved schedule and RTSP returned with WAN blocked from boot; original read-only flash hashes unchanged |
 | MCU independence, 0.1 | Scheduled-feeding serial record captured with the entire Linux camera process stopped for 25 seconds; API manual-command count unchanged |
+| Live Marketplace upgrade, 0.2.1 | Published tag installed over the initial prototype through Marketplace; one approved HA Core restart; running diagnostics report integration version 0.2.1 |
+| Live reconfiguration, 0.2.1 | Reconfigure rejected an invalid token while the existing entry stayed loaded, then accepted the installer-generated fresh token with `reconfigure_successful`; existing entry and optional restream setting preserved |
+| Preserved device state, 0.2.1 | Exact three-row MCU table and durable journal unchanged; MCU connected, clock synchronized and manual-command count zero; no feeding or schedule-write action issued for this upgrade |
+| Bundled frontend and camera, 0.2.1 | Served card bytes match the published source; only this project's legacy resource URL updated. HA camera remained available and Frigate decoded the newly authenticated stream at about 4 fps without a Frigate restart |
+| Other devices, 0.2.1 | Feeders 1 and 3 entry metadata unchanged; protected configuration fields and 39 Tuya entity-registry records unchanged; unrelated dashboard resources and restream configuration preserved |
 
-The community package keeps API v1 compatibility. Its extra lifecycle features are tested in an isolated HA instance without upgrading or restarting the user's shared live HA instance. Firmware release/installer evidence is maintained in the [companion project](https://github.com/e2equiel/pet-feeder-local-firmware/blob/main/docs/validation.md).
+The community package keeps API v1 compatibility. Automated lifecycle coverage runs in an isolated HA instance; the published 0.2.1 upgrade and reconfiguration were also exercised on the same real test unit as described above. The configuration flow's negative-token test made read-only authentication requests; the successful update reloaded only the selected entry after the one Core restart needed to load the new integration code. Firmware release/installer evidence is maintained in the [companion project](https://github.com/e2equiel/pet-feeder-local-firmware/blob/main/docs/validation.md).
 
 Physical food delivery was not observed. The test device has no batteries or microSD. Battery-backed operation, complete-power-loss clock retention, prolonged offline operation and additional hardware variants remain unverified. An electronic acknowledgement or feeding record is not proof of physical delivery. Test your own device's intended feeding and backup-power behavior before relying on it.
 

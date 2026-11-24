@@ -33,7 +33,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     await hass.http.async_register_static_paths([StaticPathConfig(
         "/pet_feeder_local/frontend", str(Path(__file__).parent / "frontend"), True
     )])
-    frontend.add_extra_js_url(hass, "/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.2.0")
+    frontend.add_extra_js_url(hass, "/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.3.0")
 
     async def set_schedule(call: ServiceCall) -> None:
         target = hass.config_entries.async_get_entry(call.data["config_entry_id"])

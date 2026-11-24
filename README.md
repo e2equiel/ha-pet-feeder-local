@@ -13,7 +13,7 @@ Choose portions, press **Serve**, edit the feeder's own weekly meals, and view i
 
 ![Portions, a separate Serve button and the weekly meal editor](docs/images/controls.jpg)
 
-*Preview of the actual bundled card using synthetic demonstration data; no home-camera image or household schedule is published.*
+*Preview of the actual 0.3 bundled card using synthetic sample data; no home-camera image or household schedule is published. The card follows your HA theme and adapts to narrow screens. [Interface design and verification](docs/interface-design.md).*
 
 ![The visual card editor links the controls from one feeder selection](docs/images/editor.jpg)
 
@@ -35,7 +35,7 @@ For a manual installation, copy the entire `custom_components/pet_feeder_local` 
 
 Changing **Portions** only selects an integer from 1 to 10. **Serve** is the separate action that sends one feeding request. A timeout means the result may be unknown: the integration does not repeat the request. Check the feeder before serving again. An MCU acknowledgement confirms the protocol exchange, not the mass of food in the bowl.
 
-The editor supports up to eight MCU meal rows, including disabled rows. Unsaved edits remain in the browser. Saving replaces the complete table with a fresh revision check and exact readback; if another client changed it, reload before editing again. The calendar entity displays enabled weekly meals; edit them in the card. Saved meals execute on the MCU with valid power and clock, including while HA or Wi-Fi is offline.
+The editor supports up to eight MCU meal rows, including disabled rows. The summary counts enabled meals separately and marks unsaved changes. Reload asks before discarding unsaved edits. Unsaved edits remain in the browser. Saving replaces the complete table with a fresh revision check and exact readback; if another client changed it, reload before editing again. The calendar entity displays enabled weekly meals; edit them in the card. Saved meals execute on the MCU with valid power and clock, including while HA or Wi-Fi is offline.
 
 HA polls status and schedules every **30 seconds**. While connected, it synchronizes the MCU's wall clock to HA's configured timezone every **five minutes**. HA does not create feeding automations. A timezone or DST change cannot reach a disconnected MCU; recovery after complete power loss remains unverified.
 

@@ -29,7 +29,7 @@ async def test_setup_entities_card_and_unload(hass,entry,client):
     assert {e.domain for e in entities}=={'number','button','sensor','binary_sensor','calendar','camera'}
     assert all(e.unique_id.startswith(INFO['id']) for e in entities)
     assert hass.services.has_service('pet_feeder_local','set_schedule')
-    assert '/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.2.0' in hass.data['frontend_extra_module_url'].urls
+    assert '/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.3.0' in hass.data['frontend_extra_module_url'].urls
     client.async_feed.assert_not_awaited()
     client.async_set_schedule.assert_not_awaited()
     assert coordinator.schedule_attributes()['integration']=='pet_feeder_local'

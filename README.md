@@ -1,5 +1,7 @@
 # Pet Feeder Local for Home Assistant
 
+<img src="custom_components/pet_feeder_local/brand/icon@2x.png" width="96" alt="Pet Feeder Local Home Assistant integration icon">
+
 [![Add to Marketplace](docs/images/add-to-marketplace.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=e2equiel&repository=ha-pet-feeder-local&category=integration)
 [![Set up integration](docs/images/add-integration.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=pet_feeder_local)
 

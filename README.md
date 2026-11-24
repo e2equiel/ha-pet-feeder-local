@@ -17,6 +17,8 @@ Schedules belong to the feeder MCU. Home Assistant configures and displays them;
 
 The camera transport has been demonstrated on one test device. The direct MCU control API and this integration are being developed and are not yet a complete, battery-validated feeding solution.
 
+The API client has twelve passing contract tests covering one-shot feeding requests, uncertain outcomes, input validation, stale schedule revisions, verified readback, disabled meals, and redirect handling. Home Assistant entity platforms and the on-device HTTP server are not implemented yet.
+
 ## Design requirements
 
 - Changing the selected portion count must never dispense food.

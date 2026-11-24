@@ -17,7 +17,9 @@ Schedules belong to the feeder MCU. Home Assistant configures and displays them;
 
 The authenticated API, native camera transport, direct MCU schedule editing, and one-portion request acknowledgement have been demonstrated on one test device with Internet blocked before application startup. The original schedule was restored after testing. Physical food delivery and battery-backed operation have not been verified.
 
-Twenty-one Python tests pass against Home Assistant 2026.11.2, covering the API client and entity behavior. DOM tests also verify that portion selection and Serve are separate, new meals start disabled, and stale revisions are preserved for conflict detection. The integration includes a config flow, portion number in box mode, Serve button, schedule sensor, MCU diagnostic sensor, calendar display, authenticated RTSP camera, and schedule editor card. Installation in a live HA instance is a separate validation step.
+Twenty-one Python tests pass against Home Assistant 2026.11.2, covering the API client and entity behavior. DOM tests also verify that portion selection and Serve are separate, new meals start disabled, and stale revisions are preserved for conflict detection. The integration includes a config flow, portion number in box mode, Serve button, schedule sensor, MCU diagnostic sensor, calendar display, authenticated RTSP camera, and schedule editor card.
+
+The integration has also passed live installation and end-to-end tests on HA 2026.11.2: portion selection sent no motor command; Serve sent one acknowledged request; the browser editor added and removed a disabled meal with matching MCU readback; and the local camera displayed successfully. The same local stream was decoded by Frigate 0.18.3. See [validation scope](docs/validation.md) for the remaining hardware checks.
 
 ## Installation
 

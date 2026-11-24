@@ -1,0 +1,5 @@
+"""Constants for Pet Feeder Local."""
+DOMAIN = "pet_feeder_local"
+CONF_ADDRESS = "address"
+CONF_TOKEN = "token"
+CONF_STREAM_SOURCE = "stream_source"

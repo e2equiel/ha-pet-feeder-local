@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -123,6 +124,16 @@ class FeederClient:
 
     async def async_get_schedule(self) -> Schedule:
         return Schedule.from_json(await self._request("GET", "schedules"))
+
+    async def async_set_clock(self, when: datetime) -> None:
+        """Synchronize MCU wall time in the configured Home Assistant zone."""
+        if when.tzinfo is None:
+            raise ValueError("An explicit local timezone is required")
+        fields = {name: getattr(when, name) for name in
+                  ("year", "month", "day", "hour", "minute", "second")}
+        result = await self._request("POST", "clock", fields)
+        if result.get("acknowledged") is not True:
+            raise FeederError("The MCU did not acknowledge the clock update")
 
     async def async_feed(self, portions: int, operation_id: str | None = None) -> str:
         if type(portions) is not int or not 1 <= portions <= 10:

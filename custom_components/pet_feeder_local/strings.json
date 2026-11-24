@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to a local feeder",
+        "description": "Enter the feeder's own API address and token.",
+        "data": {
+          "address": "Local API address (http://feeder-address:8080)",
+          "token": "API token",
+          "stream_source": "Optional local go2rtc RTSP address (recommended when sharing with Frigate)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the local feeder",
+      "invalid_auth": "The API token was rejected",
+      "invalid_response": "The feeder returned an unsupported response"
+    },
+    "abort": {
+      "already_configured": "This feeder is already configured"
+    }
+  }
+}

@@ -3,6 +3,8 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 path=Path(__file__).parents[1]/"custom_components/pet_feeder_local/api.py"
 spec=importlib.util.spec_from_file_location("feeder_api",path)
@@ -97,6 +99,18 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         client,session=self.client(Response(status=302))
         with self.assertRaises(api.FeederError): await client.async_get_info()
         self.assertFalse(session.calls[0][1]["allow_redirects"])
+
+    async def test_clock_sends_explicit_local_fields(self):
+        client,session=self.client(Response(data={"acknowledged":True}))
+        await client.async_set_clock(datetime(2026,11,23,20,15,30,tzinfo=ZoneInfo("America/Argentina/Buenos_Aires")))
+        self.assertEqual(session.calls[0][1]["json"],
+                         {"year":2026,"month":11,"day":23,"hour":20,"minute":15,"second":30})
+
+    async def test_naive_clock_never_reaches_network(self):
+        client,session=self.client(Response())
+        with self.assertRaises(ValueError):
+            await client.async_set_clock(datetime(2026,11,23,20,15,30))
+        self.assertEqual(session.calls,[])
 
     def test_invalid_meal_fields(self):
         for values in [(128,8,0,1,True),(127,24,0,1,True),(127,8,60,1,True),(127,8,0,0,True),(127,8,0,1,1)]:

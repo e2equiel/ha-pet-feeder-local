@@ -1,0 +1,21 @@
+set_schedule:
+  name: Set feeding schedule
+  description: Replace the MCU meal table and verify its readback. Requires the revision from a fresh read.
+  fields:
+    config_entry_id:
+      name: Feeder
+      required: true
+      selector:
+        config_entry:
+          integration: pet_feeder_local
+    expected_revision:
+      name: Expected revision
+      required: true
+      selector:
+        text:
+    meals:
+      name: Meals
+      description: Up to eight objects with weekdays, hour, minute, portions, and enabled fields.
+      required: true
+      selector:
+        object:

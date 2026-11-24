@@ -1,0 +1,6 @@
+{
+  "name": "ha-pet-feeder-local-card",
+  "private": true,
+  "scripts": {"test": "node tests/test_card.mjs"},
+  "devDependencies": {"happy-dom": "21.0.4"}
+}

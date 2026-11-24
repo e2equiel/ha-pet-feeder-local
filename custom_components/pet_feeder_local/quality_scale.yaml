@@ -1,0 +1,164 @@
+# Self-assessment. Custom integrations have no official Platinum tier.
+rules:
+  action-setup:
+    status: done
+    comment: "__init__.async_setup registers the action once; tests/test_lifecycle.py."
+  appropriate-polling:
+    status: done
+    comment: "30-second coordinator reads; MCU owns schedules; README Daily use."
+  brands:
+    status: done
+    comment: "Original brand assets bundled inside custom_components/pet_feeder_local/brand."
+  common-modules:
+    status: done
+    comment: "Shared const.py, api.py, coordinator.py and entity.py."
+  config-flow:
+    status: done
+    comment: "Validated GUI flow, stable unique ID and duplicate checks; tests/test_config_flow.py reaches 100% line coverage."
+  config-flow-test-coverage:
+    status: done
+    comment: "Validated GUI flow, stable unique ID and duplicate checks; tests/test_config_flow.py reaches 100% line coverage."
+  dependency-transparency:
+    status: done
+    comment: "Manifest declares runtime integration dependencies; README explains the included client and test requirements."
+  docs-actions:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-conditions:
+    status: exempt
+    comment: "No integration-specific conditions; README and docs/actions.md explain standard HA state conditions."
+  docs-high-level-description:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-installation-instructions:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-removal-instructions:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-triggers:
+    status: exempt
+    comment: "No integration-specific triggers; README and docs/actions.md explain standard HA state triggers."
+  entity-event-setup:
+    status: done
+    comment: "CoordinatorEntity manages callbacks on entity add/remove; real HA lifecycle/unload test."
+  entity-unique-id:
+    status: done
+    comment: "FeederEntity provides stable identity, translated entity keys and shared DeviceInfo; all six platforms tested in HA."
+  has-entity-name:
+    status: done
+    comment: "FeederEntity provides stable identity, translated entity keys and shared DeviceInfo; all six platforms tested in HA."
+  runtime-data:
+    status: done
+    comment: "FeederConfigEntry = ConfigEntry[FeederCoordinator]; typed runtime_data."
+  test-before-configure:
+    status: done
+    comment: "Validated GUI flow, stable unique ID and duplicate checks; tests/test_config_flow.py reaches 100% line coverage."
+  test-before-setup:
+    status: done
+    comment: "Entry setup validates the API and device identity before first refresh; setup error tests."
+  unique-config-entry:
+    status: done
+    comment: "Validated GUI flow, stable unique ID and duplicate checks; tests/test_config_flow.py reaches 100% line coverage."
+  action-exceptions:
+    status: done
+    comment: "Translated HomeAssistantError / ServiceValidationError for setup/actions; all exception paths tested."
+  config-entry-unloading:
+    status: done
+    comment: "CoordinatorEntity manages callbacks on entity add/remove; real HA lifecycle/unload test."
+  docs-configuration-parameters:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-installation-parameters:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  entity-unavailable:
+    status: done
+    comment: "Coordinator availability plus MCU/feeding gate; API failure/recovery and frontend tests."
+  integration-owner:
+    status: done
+    comment: "@e2equiel is the manifest codeowner."
+  log-when-unavailable:
+    status: done
+    comment: "DataUpdateCoordinator logs failure/recovery transitions; repeated-error test verifies one failure log."
+  parallel-updates:
+    status: done
+    comment: "PARALLEL_UPDATES=0 on all platforms; coordinator serializes writes."
+  reauthentication-flow:
+    status: done
+    comment: "Token/address/restream update validates unchanged device identity and preserves entities; tested."
+  test-coverage:
+    status: done
+    comment: "tools/check_coverage.py enforces >95% line coverage in each production module, not just total coverage."
+  devices:
+    status: done
+    comment: "FeederEntity provides stable identity, translated entity keys and shared DeviceInfo; all six platforms tested in HA."
+  diagnostics:
+    status: done
+    comment: "Allowlisted diagnostics omit credentials, addresses, identity, meal times and video; tested."
+  discovery:
+    status: done
+    comment: "SSDP manifest/flow validates local discovery and updates known LAN addresses; flow tests plus firmware description."
+  discovery-update-info:
+    status: done
+    comment: "SSDP manifest/flow validates local discovery and updates known LAN addresses; flow tests plus firmware description."
+  docs-data-update:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-examples:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-known-limitations:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-supported-devices:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-supported-functions:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-troubleshooting:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  docs-use-cases:
+    status: done
+    comment: "README and docs/actions.md, docs/camera.md, docs/validation.md document this rule."
+  dynamic-devices:
+    status: exempt
+    comment: "Each entry represents one fixed feeder; no runtime-discovered child devices."
+  entity-category:
+    status: done
+    comment: "Optional MCU sensor is a connectivity diagnostic disabled by default; primary controls retain normal defaults."
+  entity-device-class:
+    status: done
+    comment: "Optional MCU sensor is a connectivity diagnostic disabled by default; primary controls retain normal defaults."
+  entity-disabled-by-default:
+    status: done
+    comment: "Optional MCU sensor is a connectivity diagnostic disabled by default; primary controls retain normal defaults."
+  entity-translations:
+    status: done
+    comment: "English translations for all six entity platforms, and icons.json for custom icons."
+  exception-translations:
+    status: done
+    comment: "Translated HomeAssistantError / ServiceValidationError for setup/actions; all exception paths tested."
+  icon-translations:
+    status: done
+    comment: "English translations for all six entity platforms, and icons.json for custom icons."
+  reconfiguration-flow:
+    status: done
+    comment: "Token/address/restream update validates unchanged device identity and preserves entities; tested."
+  repair-issues:
+    status: done
+    comment: "MCU issue appears and clears after recovery; real HA lifecycle test."
+  stale-devices:
+    status: exempt
+    comment: "The only device has the same lifetime as its config entry; no child devices can disappear."
+  async-dependency:
+    status: done
+    comment: "Included protocol client uses asynchronous aiohttp I/O with an HA-injected ClientSession."
+  inject-websession:
+    status: done
+    comment: "Included protocol client uses asynchronous aiohttp I/O with an HA-injected ClientSession."
+  strict-typing:
+    status: done
+    comment: "mypy strict=true passes every production Python module."

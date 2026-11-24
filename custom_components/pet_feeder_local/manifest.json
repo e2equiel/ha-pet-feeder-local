@@ -1,13 +1,26 @@
 {
   "domain": "pet_feeder_local",
   "name": "Pet Feeder Local",
-  "codeowners": ["@e2equiel"],
+  "codeowners": [
+    "@e2equiel"
+  ],
   "config_flow": true,
-  "dependencies": ["ffmpeg", "stream"],
+  "dependencies": [
+    "ffmpeg",
+    "frontend",
+    "http",
+    "stream"
+  ],
   "documentation": "https://github.com/e2equiel/ha-pet-feeder-local",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/e2equiel/ha-pet-feeder-local/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0",
+  "ssdp": [
+    {
+      "st": "urn:pet-feeder-local:device:Feeder:1",
+      "manufacturer": "Pet Feeder Local"
+    }
+  ]
 }

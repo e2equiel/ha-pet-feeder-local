@@ -1,0 +1,29 @@
+{
+  "entity": {
+    "number": {
+      "portions": {
+        "default": "mdi:counter"
+      }
+    },
+    "button": {
+      "serve": {
+        "default": "mdi:food-drumstick"
+      }
+    },
+    "sensor": {
+      "schedule": {
+        "default": "mdi:calendar-clock"
+      }
+    },
+    "camera": {
+      "camera": {
+        "default": "mdi:video"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "default": "mdi:calendar-clock"
+      }
+    }
+  }
+}

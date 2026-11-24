@@ -1,8 +1,8 @@
 /** Local feeder controls. Editing a number never triggers a feeding command. */
 class PetFeederLocalCard extends HTMLElement {
   setConfig(config) {
-    if (!config.schedule_entity || !config.portions_entity || !config.serve_entity) {
-      throw new Error("Set schedule_entity, portions_entity, and serve_entity");
+    if (!config.schedule_entity) {
+      throw new Error("Select a Pet Feeder Local schedule sensor");
     }
     this.config = config;
     this.dirty = false;
@@ -13,8 +13,20 @@ class PetFeederLocalCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     const state = hass.states[this.config.schedule_entity];
-    if (!state || state.state === "unavailable") return;
-    if (!this.shadowRoot.querySelector("ha-card") || (!this.dirty && !this.busy &&
+    if (!state || ["unavailable", "unknown"].includes(state.state)) {
+      if (!this.shadowRoot.querySelector("ha-card")) this.shadowRoot.innerHTML = '<ha-card style="padding:20px">Feeder unavailable. Check power and the integration connection.</ha-card>';
+      this.shadowRoot.querySelectorAll("button,input").forEach(node => node.disabled = true);
+      return;
+    }
+    this.config = {...this.config,
+      portions_entity: this.config.portions_entity || state.attributes.portions_entity,
+      serve_entity: this.config.serve_entity || state.attributes.serve_entity};
+    if (!this.config.portions_entity || !this.config.serve_entity) {
+      this.shadowRoot.innerHTML = '<ha-card style="padding:20px">Waiting for feeder controls. This can take 30 seconds after setup.</ha-card>';
+      return;
+    }
+    this.shadowRoot.querySelectorAll("input").forEach(node => node.disabled = false);
+    if (!this.shadowRoot.querySelector("#portions") || (!this.dirty && !this.busy &&
         this.revision !== state.attributes.revision)) this.load();
     const input = this.shadowRoot.querySelector("#portions");
     if (input && this.shadowRoot.activeElement !== input) {
@@ -144,8 +156,37 @@ class PetFeederLocalCard extends HTMLElement {
     root.querySelector("#add").disabled = this.meals.length >= 8;
   }
 
+  static getConfigElement() { return document.createElement("pet-feeder-local-card-editor"); }
+  static getStubConfig(hass) {
+    return {schedule_entity: Object.keys(hass.states).find(id => hass.states[id].attributes?.integration === "pet_feeder_local") || ""};
+  }
+
   getCardSize() { return 3 + (this.meals?.length || 0) * 2; }
 }
-customElements.define("pet-feeder-local-card", PetFeederLocalCard);
+if (!customElements.get("pet-feeder-local-card")) customElements.define("pet-feeder-local-card", PetFeederLocalCard);
+
+class PetFeederLocalCardEditor extends HTMLElement {
+  setConfig(config) { this.config = config; this.render(); }
+  set hass(hass) { this._hass = hass; this.render(); }
+  render() {
+    if (!this.config || !this._hass) return;
+    this.replaceChildren();
+    const label = document.createElement("label");
+    label.textContent = "Feeder ";
+    const select = document.createElement("select");
+    select.style.cssText = "font:inherit;padding:12px;width:100%;margin:12px 0;border-radius:8px";
+    const blank = document.createElement("option"); blank.textContent = "Choose a feeder"; blank.value = ""; select.append(blank);
+    Object.entries(this._hass.states).filter(([id, state]) => state.attributes?.integration === "pet_feeder_local" || id === this.config.schedule_entity)
+      .forEach(([id,state]) => {const option = document.createElement("option"); option.value=id; option.textContent=state.attributes?.friendly_name || id; select.append(option);});
+    select.value = this.config.schedule_entity || "";
+    select.onchange = () => {
+      this.config = {type: "custom:pet-feeder-local-card", schedule_entity: select.value};
+      this.dispatchEvent(new CustomEvent("config-changed", {detail:{config:this.config},bubbles:true,composed:true}));
+    };
+    label.append(select); this.append(label);
+    const help = document.createElement("p"); help.textContent="Portions, Serve and the schedule editor are linked automatically. Saved meals run on the feeder."; this.append(help);
+  }
+}
+if (!customElements.get("pet-feeder-local-card-editor")) customElements.define("pet-feeder-local-card-editor", PetFeederLocalCardEditor);
 window.customCards = window.customCards || [];
-window.customCards.push({type:"pet-feeder-local-card",name:"Pet Feeder Local",description:"Explicit feeding and an MCU schedule editor"});
+if (!window.customCards.some(card => card.type === "pet-feeder-local-card")) window.customCards.push({type:"pet-feeder-local-card",name:"Pet Feeder Local",description:"Explicit feeding and an MCU schedule editor"});

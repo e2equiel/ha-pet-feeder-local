@@ -2,22 +2,155 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to a local feeder",
-        "description": "Enter the feeder's own API address and token.",
+        "title": "Connect a local feeder",
+        "description": "Install the Pet Feeder Local firmware overlay first. No Tuya account or local key is needed here.",
         "data": {
-          "address": "Local API address (http://feeder-address:8080)",
-          "token": "API token",
-          "stream_source": "Optional local go2rtc RTSP address (recommended when sharing with Frigate)"
+          "address": "Local API address",
+          "token": "Private API token",
+          "stream_source": "Optional shared go2rtc RTSP URL"
+        },
+        "data_description": {
+          "address": "Use the address shown by the firmware installer, for example http://192.168.1.123:8080.",
+          "token": "Copy it from the installer or your private home-assistant-setup.json backup.",
+          "stream_source": "Recommended when Home Assistant and Frigate share the camera. Leave empty for a direct connection."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update the private API token",
+        "description": "Enter the current token for this feeder. Your existing entities will be preserved.",
+        "data": {
+          "address": "Local API address",
+          "token": "Private API token",
+          "stream_source": "Optional shared go2rtc RTSP URL"
+        },
+        "data_description": {
+          "address": "Use the address shown by the firmware installer, for example http://192.168.1.123:8080.",
+          "token": "Copy it from the installer or your private home-assistant-setup.json backup.",
+          "stream_source": "Recommended when Home Assistant and Frigate share the camera. Leave empty for a direct connection."
+        }
+      },
+      "reconfigure": {
+        "title": "Update feeder connection",
+        "description": "Change the local address, private token or shared camera stream. The device identity must stay the same.",
+        "data": {
+          "address": "Local API address",
+          "token": "Private API token",
+          "stream_source": "Optional shared go2rtc RTSP URL"
+        },
+        "data_description": {
+          "address": "Use the address shown by the firmware installer, for example http://192.168.1.123:8080.",
+          "token": "Copy it from the installer or your private home-assistant-setup.json backup.",
+          "stream_source": "Recommended when Home Assistant and Frigate share the camera. Leave empty for a direct connection."
         }
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to the local feeder",
-      "invalid_auth": "The API token was rejected",
-      "invalid_response": "The feeder returned an unsupported response"
+      "cannot_connect": "Cannot reach the local feeder. Check power, Wi-Fi and its API address.",
+      "invalid_auth": "The feeder rejected this token. Copy the private API token from the installer.",
+      "invalid_response": "The device returned an unsupported local API response. Check the supported firmware version.",
+      "wrong_device": "This address belongs to a different feeder. Enter the address of the original device."
     },
     "abort": {
-      "already_configured": "This feeder is already configured"
+      "already_configured": "This feeder is already configured. Its discovered address has been updated if necessary.",
+      "invalid_discovery": "Unsupported discovery response. Add the feeder manually.",
+      "reauth_successful": "The token was updated.",
+      "reconfigure_successful": "The connection was updated."
+    }
+  },
+  "entity": {
+    "number": {
+      "portions": {
+        "name": "Portions"
+      }
+    },
+    "button": {
+      "serve": {
+        "name": "Serve"
+      }
+    },
+    "sensor": {
+      "schedule": {
+        "name": "Scheduled meals"
+      }
+    },
+    "binary_sensor": {
+      "mcu": {
+        "name": "MCU connection"
+      }
+    },
+    "camera": {
+      "camera": {
+        "name": "Camera"
+      }
+    },
+    "calendar": {
+      "calendar": {
+        "name": "Feeding schedule"
+      }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Cannot reach the local feeder. Check power, Wi-Fi and its API address."
+    },
+    "invalid_auth": {
+      "message": "The feeder rejected this token. Copy the private API token from the installer."
+    },
+    "invalid_response": {
+      "message": "The device returned an unsupported local API response. Check the supported firmware version."
+    },
+    "wrong_device": {
+      "message": "This address belongs to a different feeder. Enter the address of the original device."
+    },
+    "entry_not_loaded": {
+      "message": "Select a loaded Pet Feeder Local integration entry."
+    },
+    "invalid_schedule": {
+      "message": "Invalid meal table. Use up to eight meals and whole portions from 1 to 10."
+    },
+    "invalid_portions": {
+      "message": "Choose a whole number of portions between 1 and 10."
+    },
+    "feeding_disabled": {
+      "message": "The feeder MCU is disconnected or manual feeding is disabled. Check the device before serving."
+    },
+    "feed_unknown": {
+      "message": "The feeding outcome is unknown. Check the feeder before serving again; this request was not retried."
+    },
+    "action_failed": {
+      "message": "The local feeder could not confirm this action. Check connectivity and read the current state before trying again."
+    },
+    "schedule_conflict": {
+      "message": "The feeder schedule changed since it was loaded. Reload the editor before saving."
+    },
+    "schedule_verification": {
+      "message": "The MCU schedule readback did not match. Reload and inspect the actual saved meals."
+    }
+  },
+  "issues": {
+    "mcu_disconnected": {
+      "title": "Feeder MCU is not responding",
+      "description": "The local camera service cannot communicate reliably with the feeding controller. Check the feeder power and restart this feeder if needed. Do not serve again until connectivity returns. This issue clears automatically after recovery."
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Set feeding schedule",
+      "description": "Replace the MCU meal table after a fresh revision check and verify the exact readback. The feeder executes saved meals independently of Home Assistant.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Integration entry",
+          "description": "The Pet Feeder Local entry to update."
+        },
+        "expected_revision": {
+          "name": "Expected revision",
+          "description": "Copy the revision attribute from the scheduled meals sensor immediately before editing."
+        },
+        "meals": {
+          "name": "Meals",
+          "description": "Up to eight weekly rows: weekdays (Sunday bit 0), hour, minute, portions and enabled."
+        }
+      }
     }
   }
 }

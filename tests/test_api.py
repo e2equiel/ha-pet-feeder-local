@@ -118,3 +118,40 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__=="__main__": unittest.main()
+
+class ValidationTests(unittest.IsolatedAsyncioTestCase):
+    client = ClientTests.client
+    async def test_validated_info_and_status(self):
+        info={"api_version":1,"id":"synthetic-device","model":"V330L-DU4L-VS","version":"0.2.0","feeding_enabled":True,"rtsp_port":8555}
+        client,session=self.client(Response(data=info))
+        self.assertEqual(await client.async_get_info(),info)
+        status={"mcu_connected":True,"serial_fault":False,"clock_synced":True,"manual_commands_sent":0}
+        session.response=Response(data=status)
+        self.assertEqual(await client.async_get_status(),status)
+
+    async def test_unsupported_device_response(self):
+        client,session=self.client(Response(data={"api_version":99}))
+        with self.assertRaises(ValueError):await client.async_get_info()
+        with self.assertRaises(ValueError):await client.async_get_status()
+        session.response=Response(data=[])
+        with self.assertRaises(api.FeederError):await client.async_get_info()
+
+    async def test_authentication_failure(self):
+        client,_=self.client(Response(status=401))
+        with self.assertRaises(api.InvalidAuth):await client.async_get_info()
+
+    async def test_clock_requires_mcu_acknowledgement(self):
+        client,_=self.client(Response(data={"acknowledged":False}))
+        with self.assertRaises(api.FeederError):await client.async_set_clock(datetime.now(ZoneInfo("UTC")))
+
+    async def test_schedule_read_and_shape_validation(self):
+        client,session=self.client(Response(data={"revision":"12345678","meals":[]}))
+        self.assertEqual((await client.async_get_schedule()).meals,())
+        session.response=Response(data={"revision":123,"meals":[]})
+        with self.assertRaises(ValueError):await client.async_get_schedule()
+        for meals,revision in ((tuple(api.Meal(127,8,0,1,True) for _ in range(9)),"1234"),((),"")):
+            with self.assertRaises(ValueError):await client.async_set_schedule(meals,revision)
+
+    def test_credentials_and_url_validation(self):
+        for address,token in [("ftp://feeder.local","token"),("http://user:pass@feeder.local","token"),("http://feeder.local/private","token"),("http://feeder.local", ""),("http://feeder.local", "bad\r\ntoken")]:
+            with self.assertRaises(ValueError):api.FeederClient(Session(Response()),address,token)

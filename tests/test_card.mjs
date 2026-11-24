@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { Window } from "happy-dom";
 
 const window = new Window({url:"http://homeassistant.test/"});
-window.eval(await readFile(new URL("../frontend/pet-feeder-local-card.js",import.meta.url),"utf8"));
+window.eval(await readFile(new URL("../custom_components/pet_feeder_local/frontend/pet-feeder-local-card.js",import.meta.url),"utf8"));
 const card = window.document.createElement("pet-feeder-local-card");
 card.setConfig({schedule_entity:"sensor.schedule",portions_entity:"number.portions",serve_entity:"button.serve"});
 const calls = [];
@@ -53,4 +53,20 @@ hass.states["button.serve"].state = "unavailable";
 card.hass = hass;
 assert.equal(root.querySelector("#serve").disabled,true);
 console.log("Card separation, disabled defaults, revision handling, and availability passed");
+
+// The visual editor discovers links from one schedule entity, with no YAML.
+const autoCard = window.document.createElement("pet-feeder-local-card");
+hass.states["sensor.schedule"].attributes = {...hass.states["sensor.schedule"].attributes,
+  integration:"pet_feeder_local",portions_entity:"number.portions",serve_entity:"button.serve"};
+autoCard.setConfig({schedule_entity:"sensor.schedule"});autoCard.hass=hass;
+assert.equal(autoCard.config.portions_entity,"number.portions");
+const editor=window.document.createElement("pet-feeder-local-card-editor");
+editor.setConfig({type:"custom:pet-feeder-local-card",schedule_entity:"sensor.schedule"});editor.hass=hass;
+assert.equal(editor.querySelector("select").value,"sensor.schedule");
+assert.equal(editor.querySelectorAll("option").length,2);
+assert.equal(autoCard.constructor.getStubConfig(hass).schedule_entity,"sensor.schedule");
+hass.states["sensor.schedule"].state="unavailable";autoCard.hass=hass;
+assert.equal(autoCard.shadowRoot.querySelector("#serve").disabled,true);
+console.log("Automatic links, visual editor, and unavailable feeder controls passed");
+
 await window.happyDOM.abort();

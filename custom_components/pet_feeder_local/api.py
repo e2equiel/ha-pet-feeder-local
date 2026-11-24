@@ -8,9 +8,11 @@ from __future__ import annotations
 import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, TypedDict, cast
 from urllib.parse import urlsplit
 from uuid import uuid4
+
+from aiohttp import ClientSession
 
 
 class FeederError(Exception):
@@ -77,10 +79,30 @@ class Schedule:
         return cls(data["revision"], meals)
 
 
+class FeederInfo(TypedDict):
+    """Validated API capability and identity information."""
+
+    api_version: int
+    id: str
+    model: str
+    version: str
+    feeding_enabled: bool
+    rtsp_port: int
+
+
+class FeederStatus(TypedDict):
+    """Observed MCU connection status."""
+
+    mcu_connected: bool
+    serial_fault: bool
+    clock_synced: bool
+    manual_commands_sent: int
+
+
 class FeederClient:
     """An API client using a Home Assistant-managed aiohttp session."""
 
-    def __init__(self, session: Any, base_url: str, token: str) -> None:
+    def __init__(self, session: ClientSession, base_url: str, token: str) -> None:
         url = urlsplit(base_url)
         if (
             url.scheme not in ("http", "https") or not url.hostname
@@ -114,13 +136,23 @@ class FeederClient:
                 result = await response.json()
                 if not isinstance(result, dict):
                     raise FeederError("Invalid feeder response")
-                return result
+                return cast(dict[str, Any], result)
 
-    async def async_get_info(self) -> dict[str, Any]:
-        return await self._request("GET", "info")
+    async def async_get_info(self) -> FeederInfo:
+        result = await self._request("GET", "info")
+        if (result.get("api_version") != 1 or
+            any(not isinstance(result.get(key), str) or not result[key] for key in ("id", "model", "version")) or
+            type(result.get("feeding_enabled")) is not bool or
+            type(result.get("rtsp_port")) is not int or not 1 <= result["rtsp_port"] <= 65535):
+            raise ValueError("Unsupported feeder API response")
+        return cast(FeederInfo, result)
 
-    async def async_get_status(self) -> dict[str, Any]:
-        return await self._request("GET", "status")
+    async def async_get_status(self) -> FeederStatus:
+        result = await self._request("GET", "status")
+        if (any(type(result.get(key)) is not bool for key in ("mcu_connected", "serial_fault", "clock_synced")) or
+            type(result.get("manual_commands_sent")) is not int):
+            raise ValueError("Invalid MCU status response")
+        return cast(FeederStatus, result)
 
     async def async_get_schedule(self) -> Schedule:
         return Schedule.from_json(await self._request("GET", "schedules"))

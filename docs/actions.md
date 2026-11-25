@@ -44,3 +44,29 @@ data:
 - Alert on availability or the optional MCU connectivity diagnostic using standard HA state triggers and conditions.
 
 No integration-specific triggers or conditions are registered. Camera use does not require a Tuya stream acquisition service.
+
+## Several feeders in one card
+
+Use the visual editor to choose a default feeder and check the other installed Pet Feeder Local devices. Equivalent YAML:
+
+```yaml
+type: custom:pet-feeder-local-card
+schedule_entity: sensor.kitchen_feeder_scheduled_meals
+schedule_entities:
+  - sensor.kitchen_feeder_scheduled_meals
+  - sensor.pantry_feeder_scheduled_meals
+```
+
+Switching preserves each feeder’s browser draft. Portions and Serve always link to the selected device. A single-device card and legacy explicit entity links remain supported.
+
+Expand **Copy schedule to feeders**, check destinations, and press **Copy schedule**. Nothing is checked by default. Review the confirmation: the displayed rows and their enabled flags replace the entire table on each destination. The source draft is not saved by copying. Save or discard a destination’s unsaved draft first. All selected destinations must initially be available with distinct integration entries and current revisions. Each write has its own conflict/readback check. A runtime failure can leave some devices updated and others unchanged or uncertain; review each result before taking further action. There is no automatic retry.
+
+Multi-feeder interactions are tested with synthetic devices. Hardware tests in this project act on one test feeder only.
+
+![Explicit destinations and individual results in a disconnected synthetic preview](images/multi-copy.jpg)
+
+## Weekday encoding
+
+HA action, sensor and calendar masks use Sunday bit 0 through Saturday bit 6: Tuesday is `4`, Sunday is `1`, daily is `127`. The supported MCU’s raw firmware API v1 uses the reverse seven-bit order: Tuesday is `16`, Sunday is `64`. The client translates on read and write and keeps the raw server revision unchanged. Do not reverse masks yourself when calling the HA action.
+
+Version 0.3 and earlier passed raw masks through. After upgrading, review weekday-specific schedules; they are not automatically rewritten. The hardware comparison directly exercised Tuesday and Wednesday. Remaining individual days follow the inferred bit-order model and have software regression coverage, not separate physical trials.

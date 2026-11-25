@@ -6,7 +6,7 @@ outcome, not permission to dispense a second time.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from typing import Any, TypedDict, cast
 from urllib.parse import urlsplit
@@ -41,7 +41,7 @@ class FeedOutcomeUnknown(FeederError):
 
 @dataclass(frozen=True)
 class Meal:
-    """One MCU meal; weekdays use Sunday bit 0 through Saturday bit 6."""
+    """One HA meal; weekdays use Sunday bit 0 through Saturday bit 6."""
 
     weekdays: int
     hour: int
@@ -64,6 +64,16 @@ class Meal:
         return cls(**{key: data[key] for key in cls.__dataclass_fields__})
 
 
+def _reverse_weekdays(mask: int) -> int:
+    """Translate between HA and this MCU's Saturday-first API v1 mask.
+
+    The raw firmware API preserves UART bytes. This MCU uses Saturday bit 0
+    through Sunday bit 6, unlike Tuya's documented cloud DP convention.
+    Reversal is its own inverse; zero (one-shot) and 127 (daily) stay unchanged.
+    """
+    return sum(((mask >> day) & 1) << (6 - day) for day in range(7))
+
+
 @dataclass(frozen=True)
 class Schedule:
     """Fresh MCU schedule plus its concurrency revision."""
@@ -73,7 +83,8 @@ class Schedule:
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> Schedule:
-        meals = tuple(Meal.from_json(item) for item in data["meals"])
+        raw_meals = tuple(Meal.from_json(item) for item in data["meals"])
+        meals = tuple(replace(meal, weekdays=_reverse_weekdays(meal.weekdays)) for meal in raw_meals)
         if len(meals) > 8 or not isinstance(data.get("revision"), str):
             raise ValueError("Invalid MCU schedule response")
         return cls(data["revision"], meals)
@@ -200,7 +211,7 @@ class FeederClient:
         result = await self._request(
             "PUT", "schedules",
             {"expected_revision": expected_revision,
-             "meals": [asdict(meal) for meal in meals]},
+             "meals": [asdict(replace(meal, weekdays=_reverse_weekdays(meal.weekdays))) for meal in meals]},
         )
         verified = Schedule.from_json(result)
         if result.get("verified") is not True or verified.meals != meals:

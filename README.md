@@ -13,11 +13,11 @@ Choose portions, press **Serve**, edit the feeder's own weekly meals, and view i
 
 ![Portions, a separate Serve button and the weekly meal editor](docs/images/controls.jpg)
 
-*Preview of the actual 0.3 bundled card using synthetic sample data; no home-camera image or household schedule is published. The card follows your HA theme and adapts to narrow screens. [Interface design and verification](docs/interface-design.md).*
+*Preview of the actual 0.4 bundled card using synthetic sample data; no home-camera image or household schedule is published. The card follows your HA theme and adapts to narrow screens. [Interface design and verification](docs/interface-design.md).*
 
 ![The visual card editor links the controls from one feeder selection](docs/images/editor.jpg)
 
-**Experimental, tested with V330L-DU4L-VS / original application 68.00.09.** Install the supported overlay first. It retains proprietary camera/MCU components while providing independent local controls. Physical food delivery, battery operation and complete-power-loss clock retention still require observation on your own device. See [validation and limitations](docs/validation.md).
+**Experimental, tested with V330L-DU4L-VS / original application 68.00.09.** Install the supported overlay first. It retains proprietary camera/MCU components while providing independent local controls. Manual and autonomous scheduled food delivery were observed on the test unit with Internet blocked and its Linux control application paused. Battery operation and complete-power-loss clock retention remain unverified. Observe your own device before relying on it. See [validation and limitations](docs/validation.md).
 
 ## Installation
 
@@ -35,7 +35,11 @@ For a manual installation, copy the entire `custom_components/pet_feeder_local` 
 
 Changing **Portions** only selects an integer from 1 to 10. **Serve** is the separate action that sends one feeding request. A timeout means the result may be unknown: the integration does not repeat the request. Check the feeder before serving again. An MCU acknowledgement confirms the protocol exchange, not the mass of food in the bowl.
 
-The editor supports up to eight MCU meal rows, including disabled rows. The summary counts enabled meals separately and marks unsaved changes. Reload asks before discarding unsaved edits. Unsaved edits remain in the browser. Saving replaces the complete table with a fresh revision check and exact readback; if another client changed it, reload before editing again. The calendar entity displays enabled weekly meals; edit them in the card. Saved meals execute on the MCU with valid power and clock, including while HA or Wi-Fi is offline.
+The editor supports up to eight MCU meal rows, including disabled rows. Compact rows keep the time, portions and remove control together; weekday buttons fill the row and wrap on narrow cards. The summary counts enabled meals separately and marks unsaved changes. Reload asks before discarding unsaved edits. Unsaved edits remain in the browser. Saving replaces the complete table with a fresh revision check and exact readback; if another client changed it, reload before editing again. The calendar entity displays enabled weekly meals; edit them in the card. Saved meals execute on the MCU with valid power and clock, including while HA or Wi-Fi is offline.
+
+To manage several installed **Pet Feeder Local** devices in one card, open its visual editor, select **Feeders in this card**, and choose a default feeder. The selector switches the whole card, including Serve, to that feeder. Unsaved schedule drafts stay separate while switching. **Copy schedule to feeders** copies the displayed meals to explicitly checked destinations, after naming them in a confirmation. It replaces each destination’s complete table, including enabled state, with that destination’s own revision check. Results are shown individually; copying is not atomic across devices, and uncertain writes are not retried. It does not save the source feeder’s unsaved changes. Devices still using tuya-local cannot be selected. [Configuration and copy details](docs/actions.md#several-feeders-in-one-card).
+
+**Upgrading from 0.3 or earlier:** 0.4 corrects weekday bit order for the supported MCU. Review weekday-specific rows and save the intended days after updating. No schedule is rewritten automatically. Daily and Monday–Friday masks are symmetric and unchanged. The HA action and calendar still use Sunday bit 0; only the firmware API boundary is reversed.
 
 HA polls status and schedules every **30 seconds**. While connected, it synchronizes the MCU's wall clock to HA's configured timezone every **five minutes**. HA does not create feeding automations. A timezone or DST change cannot reach a disconnected MCU; recovery after complete power loss remains unverified.
 

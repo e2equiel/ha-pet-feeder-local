@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Correct the seven-bit weekday conversion between HA (Sunday bit 0) and the supported MCU/raw API (Saturday bit 0). Physical single-day trials exposed the mismatch hidden by daily and Monday–Friday masks. Existing schedules are not rewritten during upgrade; review weekday-specific rows.
+- Compact meal rows, remove the redundant Days heading, and let weekday controls fill the available width with 44 px touch targets. Eight desktop rows use about 40% less height.
+- Add a multi-feeder selector with independent unsaved drafts. Copy the displayed schedule to explicitly selected feeders after confirmation, with individual revision checks and per-device results. Serve always targets the selected feeder only.
+- Add asymmetric weekday and all-mask protocol regressions plus synthetic multi-feeder interaction tests. Document physically observed manual and autonomous meals, separately from remaining battery and power-loss checks.
+
 ## 0.3.0
 
 - Redesign the dashboard card and visual editor around the original integration icon, neutral HA theme surfaces, clear sections and responsive controls.

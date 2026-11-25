@@ -1,6 +1,6 @@
 # Interface design
 
-The 0.3 interface is designed for an owner setting up and using one local feeder. It retains the original product icons, uses system typography, neutral surfaces and one restrained accent, and keeps action labels specific. No remote fonts, analytics or UI service is required.
+The 0.4 interface supports compact daily meal editing and several local feeders in one card. It retains the original product icons, uses system typography, neutral surfaces and one restrained accent, and keeps action labels specific. No remote fonts, analytics or UI service is required.
 
 The Mac installer uses SwiftUI and AppKit. The portable wizard uses semantic HTML with adaptive light/dark colors. The Home Assistant card uses Web Components and the current HA theme. These are native surfaces for each host; they do not share an additional UI framework.
 
@@ -14,7 +14,7 @@ The Mac installer uses SwiftUI and AppKit. The portable wizard uses semantic HTM
 
 ## Verification
 
-Disconnected fixtures cover Mac connection/review, portable connection/review, light/dark appearance, HA card and card editor, empty portions, unsaved edits and narrow layouts at 320 CSS pixels (305 content pixels with a desktop scrollbar). The portable and HA previews have no horizontal page overflow at that width; weekday targets and card buttons are at least 44 pixels tall. Installer boundary tests and card interaction tests run separately. Public screenshots contain synthetic data. Hardware, battery and power-loss verification is unchanged by this UI release; see validation.md.
+Disconnected fixtures cover Mac connection/review, portable connection/review, light/dark appearance, HA card and card editor, empty portions, unsaved edits and narrow layouts at 320 CSS pixels (305 content pixels with a desktop scrollbar). The portable and HA previews have no horizontal page overflow at that width; weekday targets and card buttons are at least 44 pixels tall. Installer boundary tests and card interaction tests run separately. Public screenshots contain synthetic data. Eight rows measured 1,220 px instead of 2,028 px at a 492 px card width (about 40% less height). At a 320 CSS px viewport the weekday controls wrap without horizontal overflow and retain at least 44 px targets. Multi-feeder selector, separate drafts, confirmation, exact per-device targeting, preflight and partial outcomes are covered by disconnected tests. For separate hardware results and remaining battery/power-loss checks, see validation.md.
 
 ## Screenshots
 

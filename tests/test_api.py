@@ -95,6 +95,38 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         client,_=self.client(Response(data=result))
         self.assertEqual((await client.async_set_schedule((meal,),"old")).meals,(meal,))
 
+    async def test_asymmetric_weekdays_translate_at_the_api_boundary(self):
+        # These pairs would fail if the raw UART mask were mistaken for a Tuya DP.
+        for canonical, wire in [(1,64),(2,32),(4,16),(8,8),(16,4),(32,2),(64,1),(5,80)]:
+            with self.subTest(canonical=canonical, wire=wire):
+                meal=api.Meal(canonical,8,0,1,False)
+                raw={**api.asdict(meal),"weekdays":wire}
+                result={"revision":"wire-revision","meals":[raw],"verified":True}
+                client,session=self.client(Response(data=result))
+                schedule=await client.async_get_schedule()
+                self.assertEqual(schedule.meals,(meal,))
+                self.assertEqual(schedule.revision,"wire-revision")
+                saved=await client.async_set_schedule((meal,),schedule.revision)
+                self.assertEqual(saved.meals,(meal,))
+                self.assertEqual(session.calls[-1][1]["json"],
+                                 {"expected_revision":"wire-revision","meals":[raw]})
+
+    async def test_all_weekday_masks_round_trip_without_losing_bits(self):
+        for mask in range(128):
+            wire=sum(1 << (6-day) for day in range(7) if mask & (1 << day))
+            meal=api.Meal(mask,8,0,1,False)
+            raw={**api.asdict(meal),"weekdays":wire}
+            client,session=self.client(Response(data={"revision":"r","meals":[raw],"verified":True}))
+            self.assertEqual((await client.async_get_schedule()).meals,(meal,))
+            self.assertEqual((await client.async_set_schedule((meal,),"r")).meals,(meal,))
+            self.assertEqual(session.calls[-1][1]["json"]["meals"],[raw])
+
+    async def test_invalid_wire_weekday_mask_is_rejected_before_conversion(self):
+        for mask in [-1,128,True,4.5]:
+            client,_=self.client(Response(data={"revision":"r","meals":[
+                {"weekdays":mask,"hour":8,"minute":0,"portions":1,"enabled":False}]}))
+            with self.assertRaises(ValueError):await client.async_get_schedule()
+
     async def test_redirects_are_not_followed(self):
         client,session=self.client(Response(status=302))
         with self.assertRaises(api.FeederError): await client.async_get_info()

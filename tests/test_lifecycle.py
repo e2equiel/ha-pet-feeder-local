@@ -7,6 +7,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
+from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from custom_components.pet_feeder_local.api import (FeederError, FeedOutcomeUnknown, InvalidAuth, Meal,
@@ -29,7 +30,8 @@ async def test_setup_entities_card_and_unload(hass,entry,client):
     assert {e.domain for e in entities}=={'number','button','sensor','binary_sensor','calendar','camera'}
     assert all(e.unique_id.startswith(INFO['id']) for e in entities)
     assert hass.services.has_service('pet_feeder_local','set_schedule')
-    assert '/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.3.0' in hass.data['frontend_extra_module_url'].urls
+    integration=await async_get_integration(hass,'pet_feeder_local')
+    assert f'/pet_feeder_local/frontend/pet-feeder-local-card.js?v={integration.version}' in hass.data['frontend_extra_module_url'].urls
     client.async_feed.assert_not_awaited()
     client.async_set_schedule.assert_not_awaited()
     assert coordinator.schedule_attributes()['integration']=='pet_feeder_local'

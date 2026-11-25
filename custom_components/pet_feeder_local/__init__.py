@@ -16,6 +16,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
 from .api import FeederClient, FeederError, InvalidAuth, Meal
 from .const import CONF_ADDRESS, CONF_TOKEN, DOMAIN
@@ -33,7 +34,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     await hass.http.async_register_static_paths([StaticPathConfig(
         "/pet_feeder_local/frontend", str(Path(__file__).parent / "frontend"), True
     )])
-    frontend.add_extra_js_url(hass, "/pet_feeder_local/frontend/pet-feeder-local-card.js?v=0.3.0")
+    integration = await async_get_integration(hass, DOMAIN)
+    frontend.add_extra_js_url(hass, f"/pet_feeder_local/frontend/pet-feeder-local-card.js?v={integration.version}")
 
     async def set_schedule(call: ServiceCall) -> None:
         target = hass.config_entries.async_get_entry(call.data["config_entry_id"])

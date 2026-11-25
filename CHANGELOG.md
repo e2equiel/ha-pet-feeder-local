@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Use the installed integration version for the automatically registered frontend URL so browser caches load the current compact card after updates. Entity setup, schedules and firmware are unchanged.
+
 ## 0.4.0
 
 - Correct the seven-bit weekday conversion between HA (Sunday bit 0) and the supported MCU/raw API (Saturday bit 0). Physical single-day trials exposed the mismatch hidden by daily and Monday–Friday masks. Existing schedules are not rewritten during upgrade; review weekday-specific rows.

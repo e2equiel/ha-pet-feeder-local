@@ -63,6 +63,8 @@ Expand **Copy schedule to feeders**, check destinations, and press **Copy schedu
 
 Multi-feeder interactions are tested with synthetic devices. Hardware tests in this project act on one test feeder only.
 
+Before adding a feeder that already serves meals, follow the companion project's [active-feeder migration guide](https://github.com/e2equiel/pet-feeder-local-firmware/blob/main/docs/migrating-active-feeders.md). Record and verify each existing schedule separately. A full eight-row table has no spare row for an extra scheduled test; observe the next existing meal instead. Do not use schedule copy as a migration check unless you intend to replace the destination's table.
+
 ![Explicit destinations and individual results in a disconnected synthetic preview](images/multi-copy.jpg)
 
 ## Weekday encoding

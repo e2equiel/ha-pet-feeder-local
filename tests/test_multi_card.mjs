@@ -91,5 +91,20 @@ let configuration;editor.addEventListener("config-changed",event=>configuration=
 const second=editor.querySelector(`input[value="${ids[1]}"]`);second.checked=true;second.dispatchEvent(new window.Event("change"));
 assert.deepEqual(Array.from(configuration.schedule_entities),ids.slice(0,2));
 assert.equal(configuration.portions_entity,undefined);assert.equal(configuration.serve_entity,undefined);
-console.log("Multi-feeder drafts, exact targeting, preflight, confirmation, partial results and editor passed");
+
+// A full active schedule keeps every field and row, with separate payloads per destination.
+const fullMeals=[1,2,4,8,16,32,64,127].map((weekdays,index)=>({weekdays,hour:index*3,minute:5,portions:index+1,enabled:true}));
+hass.states[ids[0]].state="8";hass.states[ids[0]].attributes.meals=fullMeals;
+const fullCard=create(), fullRoot=fullCard.shadowRoot;
+assert.equal(fullRoot.querySelectorAll(".meal").length,8);
+assert.equal(fullRoot.querySelector("#add").disabled,true);
+fullRoot.querySelectorAll(".copy-target").forEach(input=>input.checked=true);
+count=calls.length;await fullCard.copySchedule();
+assert.equal(calls.length,count+2);
+assert.deepEqual(calls.slice(count).map(call=>call.data.config_entry_id),["entry-1","entry-2"]);
+for (const call of calls.slice(count)) assert.deepEqual(JSON.parse(JSON.stringify(call.data.meals)),fullMeals);
+calls[count].data.meals[7].portions=10;
+assert.equal(calls[count+1].data.meals[7].portions,8);
+assert.equal(fullCard.meals[7].portions,8);
+console.log("Multi-feeder drafts, exact targeting, full active tables, preflight, confirmation, partial results and editor passed");
 await window.happyDOM.abort();

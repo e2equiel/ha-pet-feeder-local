@@ -40,3 +40,9 @@ An initial Tuesday-only raw mask `4` did not feed, while daily `127` did. A comp
 Every trial restored the original disabled table and revision; the real clock and selected HA entry were restored afterward. Other feeders were not accessed or actuated. These short tests establish actual scheduled food delivery independent of the running Linux control application and its HA/Internet connection. They do not establish battery operation, clock retention through total power loss, prolonged offline reliability, every weekday, or additional hardware variants.
 
 The compact card and multi-device copy are tested against synthetic devices; no household feeder was used as a copy destination. Public screenshots use synthetic meals and names.
+
+## Published 0.4.1 installed in live HA
+
+The published tag was downloaded through Marketplace and loaded after one Core restart. Runtime diagnostics report 0.4.1 and the served card bytes match the published source. An all-disabled Tuesday fixture written through the actual HA action used HA mask `4`, produced raw MCU mask `16`, and read back as Tuesday in HA. The fixture was removed; the exact original table and revision were restored with no additional motor commands.
+
+The live card shows the original three disabled rows, no redundant Days heading, full-width 56 × 44 px weekday controls and rows about 147 px tall. Camera imagery returned in HA, the browser displayed the local camera, and Frigate received about 4 fps. Other feeders’ entry metadata, 39 protected Tuya entity-registry configurations, 46 automation configurations and unrelated dashboard/restream resources were preserved. Three previously active players were still playing after the restart. Multi-feeder copy remains covered by synthetic tests only.

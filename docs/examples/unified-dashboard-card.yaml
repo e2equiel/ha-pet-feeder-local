@@ -1,0 +1,72 @@
+# Paste as one Manual card in a Panel view.
+# Replace the two schedule sensors and four camera entities with your own.
+# This configuration does not write meal tables or issue feeding commands.
+type: custom:stack-in-card
+mode: vertical
+keep:
+  background: true
+  border_radius: true
+  margin: true
+  outer_padding: false
+cards:
+  - type: custom:layout-card
+    layout_type: custom:grid-layout
+    layout:
+      margin: '0'
+      padding: 8px
+      grid-gap: 16px
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr)
+      grid-template-areas: '"controls cameras"'
+      mediaquery:
+        '(max-width: 1100px)':
+          grid-template-columns: minmax(0, 1fr)
+          grid-template-areas: '"cameras" "controls"'
+    cards:
+      - type: custom:pet-feeder-local-card
+        schedule_entity: sensor.feeder_1_scheduled_meals
+        schedule_entities:
+          - sensor.feeder_1_scheduled_meals
+          - sensor.feeder_3_scheduled_meals
+        view_layout:
+          grid-area: controls
+      - type: vertical-stack
+        view_layout:
+          grid-area: cameras
+          place-self: start stretch
+        cards:
+          - type: picture-entity
+            entity: camera.feeding_station_overhead
+            name: Overhead · all feeders
+            camera_view: live
+            aspect_ratio: '16:9'
+            show_state: false
+            tap_action:
+              action: more-info
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: picture-entity
+                entity: camera.feeder_2_camera
+                name: Feeder 2
+                camera_view: live
+                aspect_ratio: '16:9'
+                show_state: false
+                tap_action:
+                  action: more-info
+              - type: picture-entity
+                entity: camera.feeder_3_camera
+                name: Feeder 3
+                camera_view: live
+                aspect_ratio: '16:9'
+                show_state: false
+                tap_action:
+                  action: more-info
+              - type: picture-entity
+                entity: camera.feeder_1_camera
+                name: Feeder 1
+                camera_view: live
+                aspect_ratio: '16:9'
+                show_state: false
+                tap_action:
+                  action: more-info

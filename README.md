@@ -17,7 +17,11 @@ Choose portions, press **Serve**, edit the feeder's own weekly meals, and view i
 
 ![The visual card editor links the controls from one feeder selection](docs/images/editor.jpg)
 
-**Experimental, tested with V330L-DU4L-VS / original application 68.00.09.** Install the supported overlay first. It retains proprietary camera/MCU components while providing independent local controls. Manual and autonomous scheduled food delivery were observed on the test unit with Internet blocked and its Linux control application paused. Battery operation and complete-power-loss clock retention remain unverified. Observe your own device before relying on it. See [validation and limitations](docs/validation.md).
+![Unified dashboard with two active feeder controls and four camera panels](docs/images/unified-dashboard-desktop.jpg)
+
+*Unified dashboard preview: the actual bundled controls with synthetic meals and illustrated camera placeholders. The live deployment was separately checked with all four local videos playing. [Setup, mobile preview and safe copying](docs/unified-dashboard.md). No household footage or meal times are published.*
+
+**Experimental, tested on three V330L-DU4L-VS units / original application 68.00.09.** Install the supported overlay first. It retains proprietary camera/MCU components while providing independent local controls. Both active units preserved eight enabled meals and delivered scheduled food with their HA entries disabled and Internet blocked. The test unit separately passed manual feeding and short scheduled trials with its Linux control application paused. Manual delivery was also confirmed on one active unit; no additional manual portion was requested from the other. Battery operation and complete-power-loss clock retention remain unverified. See the [per-device evidence and limits](docs/validation.md#three-device-supervised-validation-2026-11-25).
 
 ## Installation
 
@@ -38,6 +42,8 @@ Changing **Portions** only selects an integer from 1 to 10. **Serve** is the sep
 The editor supports up to eight MCU meal rows, including disabled rows. Compact rows keep the time, portions and remove control together; weekday buttons fill the row and wrap on narrow cards. The summary counts enabled meals separately and marks unsaved changes. Reload asks before discarding unsaved edits. Unsaved edits remain in the browser. Saving replaces the complete table with a fresh revision check and exact readback; if another client changed it, reload before editing again. The calendar entity displays enabled weekly meals; edit them in the card. Saved meals execute on the MCU with valid power and clock, including while HA or Wi-Fi is offline.
 
 To manage several installed **Pet Feeder Local** devices in one card, open its visual editor, select **Feeders in this card**, and choose a default feeder. The selector switches the whole card, including Serve, to that feeder. Unsaved schedule drafts stay separate while switching. **Copy schedule to feeders** copies the displayed meals to explicitly checked destinations, after naming them in a confirmation. It replaces each destination’s complete table, including enabled state, with that destination’s own revision check. Results are shown individually; copying is not atomic across devices, and uncertain writes are not retried. It does not save the source feeder’s unsaved changes. Devices still using tuya-local cannot be selected. [Configuration and copy details](docs/actions.md#several-feeders-in-one-card).
+
+For one combined card with two active feeders, three feeder cameras and an overhead camera, follow the [unified dashboard guide](docs/unified-dashboard.md). Adding the dashboard or switching its selector does not import or rewrite any meal table. Copying is optional and was not executed on the active household feeders during validation.
 
 **Upgrading from 0.3 or earlier:** 0.4 corrects weekday bit order for the supported MCU. Review weekday-specific rows and save the intended days after updating. No schedule is rewritten automatically. Daily and Monday–Friday masks are symmetric and unchanged. The HA action and calendar still use Sunday bit 0; only the firmware API boundary is reversed.
 

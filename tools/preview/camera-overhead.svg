@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <defs>
+    <pattern id="floor" width="120" height="120" patternUnits="userSpaceOnUse"><rect width="120" height="120" fill="#e8eeea"/><path d="M120 0H0V120" fill="none" stroke="#d2ddd5" stroke-width="2"/></pattern>
+    <g id="feeder"><ellipse cy="45" rx="94" ry="90" fill="#bccfc2" opacity=".5"/><ellipse cy="-28" rx="58" ry="46" fill="#a8b9ae"/><ellipse cy="-28" rx="46" ry="34" fill="#dce6df"/><rect x="-76" y="-10" width="152" height="168" rx="52" fill="#fff" stroke="#ccd9d0" stroke-width="3"/><rect x="-47" y="14" width="94" height="12" rx="6" fill="#dce8e0"/><circle cy="77" r="27" fill="#237b6e"/><circle cy="77" r="15" fill="#153f38"/><circle cx="6" cy="70" r="5" fill="#8bd4b9"/></g>
+  </defs>
+  <rect width="960" height="540" fill="url(#floor)"/>
+  <rect x="332" y="58" width="296" height="112" rx="28" fill="#d6e5d9"/>
+  <path d="M372 114h216" stroke="#bfd3c4" stroke-width="8" stroke-linecap="round"/>
+  <use href="#feeder" x="220" y="302"/><use href="#feeder" x="480" y="302"/><use href="#feeder" x="740" y="302"/>
+  <text x="480" y="225" text-anchor="middle" fill="#6c8476" font-family="system-ui,sans-serif" font-size="18">ILLUSTRATED DEMO VIEW</text>
+</svg>

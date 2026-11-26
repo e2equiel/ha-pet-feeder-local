@@ -20,6 +20,10 @@ Disconnected fixtures cover Mac connection/review, portable connection/review, l
 
 ![Narrow dark card with unsaved, disabled sample meals](images/controls-mobile-dark.jpg)
 
+The [unified dashboard](unified-dashboard.md) adds a wide-screen control/camera arrangement and places the four camera panels above the controls on narrow screens. Its public screenshots use the actual bundled feeding component with synthetic state and original SVG camera illustrations. The reproducible disconnected fixture is `tools/preview/unified-dashboard.html`; it rejects every service action locally. The real HA deployment separately verified four playing videos, both selector directions and unchanged eight-row calendars; see [validation](validation.md#three-device-supervised-validation-2026-11-25). No real calendar was copied to produce the public previews.
+
+![Unified dashboard with synthetic meals and camera artwork](images/unified-dashboard-desktop.jpg)
+
 ## Design references
 
 The review and redesign workflow was adapted from [Unslop](https://github.com/heydamir/unslop) by Damir Sokolovsky, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Changes here adapt its spacing, color, icon, copy, type, layout, detail and motion review principles to native installer and HA surfaces. Original project source licensing is unchanged.

@@ -77,6 +77,8 @@ A lost API connection makes entities unavailable and logs one failure/recovery t
 
 ## Actions and automation examples
 
+With overlay 0.2.1 and integration 0.5.0, observed MCU scheduled-row records emit `pet_feeder_local_scheduled_feeding`. Use that event to trigger notifications when the MCU executes a saved meal. Optional Frigate/Telegram video notifications support a persistent queue, silent 25x exports, simultaneous-feeder merging and ID-based cleanup. They never serve food. See [scheduled events and feeding videos](docs/feeding-notifications.md).
+
 The integration exposes `pet_feeder_local.set_schedule` to replace up to eight rows. The bundled editor is the easiest interface. The action requires a loaded `config_entry_id`, the sensor's freshly read `revision`, and meal objects with `weekdays` (Sunday bit 0), `hour`, `minute`, `portions` and `enabled`. It detects conflicts and verifies readback. See [action reference and examples](docs/actions.md).
 
 Use standard HA `number.set_value` and `button.press` to automate an **explicit** manual serve when that is what you intend. There are no integration-specific triggers or conditions; standard state triggers and conditions can use its entities. Do not create an HA timed automation to duplicate a saved MCU meal.

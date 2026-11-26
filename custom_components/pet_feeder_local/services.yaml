@@ -19,3 +19,50 @@ set_schedule:
       required: true
       selector:
         object:
+queue_feeding_video:
+  name: Queue feeding video
+  description: Export an MCU-event video from Frigate at 25x without audio, send it through Telegram, and remove the owned export. Never controls feeding.
+  fields:
+    event_id:
+      required: true
+      selector:
+        text:
+    occurred_at:
+      description: ISO 8601 timestamp with timezone from the scheduled-feeding event. Must be within the last ten minutes.
+      required: true
+      selector:
+        text:
+    frigate_url:
+      description: Internal Frigate HTTP origin reachable by Home Assistant, without a path or credentials.
+      required: true
+      selector:
+        text:
+    camera:
+      required: true
+      selector:
+        text:
+    telegram_config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: telegram_bot
+    feeder_name:
+      selector:
+        text:
+    caption:
+      selector:
+        text:
+    pre_seconds:
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 60
+          mode: box
+    post_seconds:
+      default: 225
+      selector:
+        number:
+          min: 1
+          max: 600
+          mode: box

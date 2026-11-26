@@ -21,6 +21,7 @@ from homeassistant.loader import async_get_integration
 from .api import FeederClient, FeederError, InvalidAuth, Meal
 from .const import CONF_ADDRESS, CONF_TOKEN, DOMAIN
 from .coordinator import FeederCoordinator
+from .feeding_video import FeedingVideoNotifications
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -53,6 +54,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         vol.Required("expected_revision"): str,
         vol.Required("meals"): [dict],
     }))
+    video_notifications = FeedingVideoNotifications(hass)
+    hass.data.setdefault(DOMAIN, {})["feeding_video_notifications"] = video_notifications
+    await video_notifications.async_setup()
     return True
 
 

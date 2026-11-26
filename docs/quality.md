@@ -18,7 +18,7 @@ The automated suite enforces >95% line coverage in every module and strict typin
 | `docs-high-level-description` | Implemented | README and docs/actions.md, docs/camera.md, docs/validation.md document this rule. |
 | `docs-installation-instructions` | Implemented | README and docs/actions.md, docs/camera.md, docs/validation.md document this rule. |
 | `docs-removal-instructions` | Implemented | README and docs/actions.md, docs/camera.md, docs/validation.md document this rule. |
-| `docs-triggers` | Exempt | No integration-specific triggers; README and docs/actions.md explain standard HA state triggers. |
+| `docs-triggers` | Implemented | docs/feeding-notifications.md documents the observed MCU event, fields, cursor, stale-report limits and a complete automation example. |
 | `entity-event-setup` | Implemented | CoordinatorEntity manages callbacks on entity add/remove; real HA lifecycle/unload test. |
 | `entity-unique-id` | Implemented | FeederEntity provides stable identity, translated entity keys and shared DeviceInfo; all six platforms tested in HA. |
 | `has-entity-name` | Implemented | FeederEntity provides stable identity, translated entity keys and shared DeviceInfo; all six platforms tested in HA. |
@@ -52,7 +52,7 @@ The automated suite enforces >95% line coverage in every module and strict typin
 | `entity-device-class` | Implemented | Optional MCU sensor is a connectivity diagnostic disabled by default; primary controls retain normal defaults. |
 | `entity-disabled-by-default` | Implemented | Optional MCU sensor is a connectivity diagnostic disabled by default; primary controls retain normal defaults. |
 | `entity-translations` | Implemented | English translations for all six entity platforms, and icons.json for custom icons. |
-| `exception-translations` | Implemented | Translated HomeAssistantError / ServiceValidationError for setup/actions; all exception paths tested. |
+| `exception-translations` | Implemented | Translated setup/feeder-control exceptions and video-action validation/queue exceptions; all exception paths tested. Background transport failures produce persistent HA diagnostics without leaking them through a feeding action. |
 | `icon-translations` | Implemented | English translations for all six entity platforms, and icons.json for custom icons. |
 | `reconfiguration-flow` | Implemented | Token/address/restream update validates unchanged device identity and preserves entities; tested. |
 | `repair-issues` | Implemented | MCU issue appears and clears after recovery; real HA lifecycle test. |

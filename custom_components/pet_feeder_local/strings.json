@@ -125,6 +125,15 @@
     },
     "schedule_verification": {
       "message": "The MCU schedule readback did not match. Reload and inspect the actual saved meals."
+    },
+    "invalid_video_request": {
+      "message": "Enter a valid Frigate HTTP origin, camera name, event ID and timezone-aware event timestamp."
+    },
+    "stale_video_event": {
+      "message": "The feeding-video event must be within the last ten minutes."
+    },
+    "video_queue_full": {
+      "message": "The feeding-video queue is full. Check the Pet Feeder Local persistent notifications before retrying."
     }
   },
   "issues": {
@@ -149,6 +158,39 @@
         "meals": {
           "name": "Meals",
           "description": "Up to eight weekly rows: weekdays (Sunday bit 0), hour, minute, portions and enabled."
+        }
+      }
+    },
+    "queue_feeding_video": {
+      "name": "Queue feeding video",
+      "description": "Create a silent 25x Frigate video for an observed scheduled feeding, send it to Telegram and clean up its export. Does not dispense food.",
+      "fields": {
+        "event_id": {
+          "name": "Event ID"
+        },
+        "occurred_at": {
+          "name": "Occurred at"
+        },
+        "frigate_url": {
+          "name": "Frigate URL"
+        },
+        "camera": {
+          "name": "Camera"
+        },
+        "telegram_config_entry_id": {
+          "name": "Telegram integration"
+        },
+        "feeder_name": {
+          "name": "Feeder name"
+        },
+        "caption": {
+          "name": "Caption"
+        },
+        "pre_seconds": {
+          "name": "Seconds before feeding"
+        },
+        "post_seconds": {
+          "name": "Seconds after feeding"
         }
       }
     }

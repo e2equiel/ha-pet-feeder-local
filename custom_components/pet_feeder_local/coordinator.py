@@ -28,6 +28,7 @@ from .api import (
     ScheduleVerificationError,
 )
 from .const import DOMAIN
+from .feeding_events import ScheduledFeedingEvents
 
 if TYPE_CHECKING:
     from . import FeederConfigEntry
@@ -52,6 +53,7 @@ class FeederCoordinator(DataUpdateCoordinator[FeederData]):
         self.lock = asyncio.Lock()
         self.last_clock_sync = float("-inf")
         self._issue_id = entry.entry_id + "_mcu"
+        self.feed_events = ScheduledFeedingEvents(hass, entry.entry_id, info["id"], entry.title)
 
     async def _async_update_data(self) -> FeederData:
         try:
@@ -61,6 +63,9 @@ class FeederCoordinator(DataUpdateCoordinator[FeederData]):
                     await self.client.async_set_clock(dt_util.now())
                     self.last_clock_sync = monotonic()
                 schedule = await self.client.async_get_schedule()
+                if self.info.get("scheduled_feed_events") is True:
+                    events = await self.client.async_get_events()
+                    await self.feed_events.async_process(events)
             if status["mcu_connected"] and not status["serial_fault"]:
                 ir.async_delete_issue(self.hass, DOMAIN, self._issue_id)
             else:

@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -99,6 +99,7 @@ class FeederInfo(TypedDict):
     version: str
     feeding_enabled: bool
     rtsp_port: int
+    scheduled_feed_events: NotRequired[bool]
 
 
 class FeederStatus(TypedDict):
@@ -167,6 +168,10 @@ class FeederClient:
 
     async def async_get_schedule(self) -> Schedule:
         return Schedule.from_json(await self._request("GET", "schedules"))
+
+    async def async_get_events(self) -> dict[str, Any]:
+        """Read passive MCU telemetry; this request sends no UART command."""
+        return await self._request("GET", "events")
 
     async def async_set_clock(self, when: datetime) -> None:
         """Synchronize MCU wall time in the configured Home Assistant zone."""

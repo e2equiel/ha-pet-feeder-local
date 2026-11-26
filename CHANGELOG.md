@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Emit deduplicated scheduled-feeding events from passive MCU telemetry in overlay 0.2.1. Persist the event cursor and ignore stale reports; manual ACKs and calendar predictions are not feeding events.
+- Add optional durable Frigate/Telegram video notifications: silent 25x custom exports, exact export IDs, simultaneous-feeder merging, ownership-checked cleanup and restart recovery. Uncertain Telegram sends are not blindly repeated.
+- Preserve existing meal tables, manual-feeding controls and compatibility with older overlays. Video notifications use the already configured Frigate and Telegram services.
+
 ## 0.4.1
 
 - Use the installed integration version for the automatically registered frontend URL so browser caches load the current compact card after updates. Entity setup, schedules and firmware are unchanged.

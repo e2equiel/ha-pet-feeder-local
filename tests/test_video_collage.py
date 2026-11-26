@@ -13,6 +13,23 @@ from custom_components.pet_feeder_local.video_collage import CollageRenderer, co
 KEY = "a" * 24
 
 
+def test_public_media_mapping_never_becomes_the_video_cache(hass):
+    public = hass.config.path("www", "images")
+    for media in [{"images": public}, {"local": public}]:
+        hass.config.media_dirs = media
+        assert CollageRenderer(hass).directory == Path("/media/.pet_feeder_local_videos")
+
+
+async def test_a_media_symlink_into_the_public_web_root_is_rejected(hass, tmp_path):
+    public = tmp_path / "www"; public.mkdir()
+    alias = tmp_path / "media"; alias.symlink_to(public, target_is_directory=True)
+    renderer = CollageRenderer(hass); renderer.directory = alias / ".pet_feeder_local_videos"
+    with patch.object(hass.config, "path", return_value=str(public)), \
+         patch.object(hass.config, "is_allowed_path", return_value=True):
+        with pytest.raises(HomeAssistantError):
+            await renderer.async_render(KEY, "http://nvr", ["a", "b", "c"], [0, 0, 0], 1000, 1240)
+
+
 def timeline(camera="overhead", start=1000, end=1240):
     stamp = datetime.fromtimestamp(start - 2, UTC)
     path = stamp.strftime("/media/frigate/recordings/%Y-%m-%d/%H/") + camera + stamp.strftime("/%M.%S.mp4")

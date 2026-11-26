@@ -72,7 +72,9 @@ class CollageRenderer:
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         media = hass.config.media_dirs
-        root = media.get("local") or next(iter(media.values()), hass.config.path("media"))
+        root = media.get("local") or "/media"
+        if Path(root).is_relative_to(Path(hass.config.path("www"))):
+            root = "/media"
         self.directory = Path(root) / ".pet_feeder_local_videos"
 
     def path(self, key: str, *, partial: bool = False) -> Path:
@@ -99,7 +101,10 @@ class CollageRenderer:
     async def async_render(self, key: str, base: str, cameras: list[str], offsets: list[float],
                            start: int, end: int) -> Path:
         output, partial = self.path(key), self.path(key, partial=True)
-        if not await self.hass.async_add_executor_job(self.hass.config.is_allowed_path, str(output)):
+        def private_and_allowed() -> bool:
+            return (self.hass.config.is_allowed_path(str(output))
+                and not output.resolve().is_relative_to(Path(self.hass.config.path("www")).resolve()))
+        if not await self.hass.async_add_executor_job(private_and_allowed):
             raise HomeAssistantError("The HA media directory is not allowed for Telegram files")
         await self.hass.async_add_executor_job(lambda: self.directory.mkdir(parents=True, exist_ok=True, mode=0o700))
         await self.async_cleanup(key)

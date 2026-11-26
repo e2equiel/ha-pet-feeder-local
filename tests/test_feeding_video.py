@@ -165,7 +165,7 @@ async def test_unknown_create_is_reconciled_without_duplicate_post(hass):
     job["phase"] = "creating"
     m._request = AsyncMock(return_value=[])
     assert await m._process(job) is False
-    assert m._request.await_args.args[1] == "exports"
+    assert [c.args[1] for c in m._request.await_args_list] == ["exports", "jobs/export"]
     job["end"] -= 700
     assert await m._process(job) is True
     job["phase"] = "cleanup"
@@ -299,3 +299,28 @@ async def test_failed_export_and_unowned_path_cannot_send_video(hass):
     m._request = AsyncMock(return_value=exported(job, video_path="/tmp/not-an-export.mp4"))
     with pytest.raises(HomeAssistantError):
         await m._process(job)
+
+
+@pytest.mark.parametrize("status", ["queued", "running"])
+async def test_catalog_404_does_not_abandon_an_export_that_can_finish_later(hass, status):
+    m = await manager(hass)
+    await m.async_enqueue(call())
+    job = m.data["jobs"][0]
+    job["export_id"] = "comederos_test"
+    m._request = AsyncMock(side_effect=[None, {"status": status}])
+    assert await m._cleanup(job) is False
+    assert job in m.data["jobs"] and job["export_id"] == "comederos_test"
+    # The same retained ID is deleted after the worker eventually finishes.
+    m._request = AsyncMock(side_effect=[exported(job), {"success": True}])
+    assert await m._cleanup(job) is True
+    assert m._request.await_args.args[2] == {"ids": ["comederos_test"]}
+
+
+async def test_lost_create_response_recovers_the_owned_active_job_before_a_file_exists(hass):
+    m = await manager(hass)
+    await m.async_enqueue(call())
+    job = m.data["jobs"][0]
+    active = {"id": "comederos_test", "camera": job["camera"], "name": job["name"], "status": "queued"}
+    m._request = AsyncMock(side_effect=[[], [active], None, active])
+    assert await m._cleanup(job) is False
+    assert job["export_id"] == "comederos_test"

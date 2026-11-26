@@ -14,6 +14,8 @@ The worker follows the returned export ID and waits for completion. Telegram fet
 
 Failures produce a persistent HA notification. Cleanup is retained in the queue when Frigate is unavailable, and resumes after HA restarts. If HA stops during a Telegram send, its outcome is uncertain: the worker cleans up instead of blindly sending it again. The action does not inspect a folder's latest filename, depend on a folder-size sensor, retry a feeding command, or change any schedule.
 
+The export catalog and the NVR job queue are checked separately: an export can be queued or running before its file appears in the catalog. A temporary catalog 404 does not discard ownership of a job that can finish later. Encoding is capped at a 3.5 Mbit/s maximum video rate to keep the supported clip durations comfortably below Telegram's upload limit.
+
 Use the internal Frigate origin reachable by HA (for example, `http://frigate.local:5000`). This first implementation uses Frigate's trusted internal API; do not expose that API publicly. Preserve the Telegram config entry already used for your own feeding videos. Optional video notifications require those two existing integrations; normal feeder control does not.
 
 ```yaml

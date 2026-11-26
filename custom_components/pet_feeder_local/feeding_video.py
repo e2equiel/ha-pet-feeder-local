@@ -134,6 +134,10 @@ class FeedingVideoNotifications:
     async def _find_export(self, job: dict[str, Any]) -> dict[str, Any] | None:
         exports = await self._request(job, "exports")
         matches = [e for e in exports if e["camera"] == job["camera"] and e["name"] == job["name"]]
+        if not matches:
+            # A queued/running export may not have a catalog record yet.
+            active = await self._request(job, "jobs/export")
+            matches = [e for e in active if e["camera"] == job["camera"] and e["name"] == job["name"]]
         if len(matches) > 1:
             raise HomeAssistantError("Multiple exports have the same notification identity")
         return matches[0] if matches else None
@@ -149,6 +153,9 @@ class FeedingVideoNotifications:
             await self._save()
         export = await self._request(job, "exports/" + job["export_id"], missing_ok=True)
         if export is None:
+            active = await self._request(job, "jobs/export/" + job["export_id"], missing_ok=True)
+            if active and active.get("status") in ("queued", "running"):
+                return False
             return True
         if export["camera"] != job["camera"] or export["name"] != job["name"]:
             raise HomeAssistantError("Export ownership mismatch; deletion refused")

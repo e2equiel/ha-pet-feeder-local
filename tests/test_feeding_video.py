@@ -1,6 +1,8 @@
 """Notification ownership, merging, restart recovery and failure cleanup."""
 
 import asyncio
+import copy
+import math
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -11,6 +13,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.util import dt as dt_util
 
 from custom_components.pet_feeder_local.feeding_video import SERVICE, FeedingVideoNotifications
+from .test_video_collage import timeline
 
 
 def call(event_id="event-1", feeder="Feeder 1", **changes):
@@ -40,6 +43,141 @@ async def manager(hass):
     m._start_worker = Mock()
     await m.async_setup()
     return m
+
+
+async def test_caption_deck_survives_restart_and_merging_consumes_no_phrase(hass):
+    m = await manager(hass)
+    options = ["Dinner is served", "The buffet is open", "A meal for the crew"]
+    first = call(caption_options=options)
+    await m.async_enqueue(first)
+    chosen = m.data["jobs"][0]["caption"]
+    snapshot = copy.deepcopy(m.data["caption_decks"])
+    await m.async_enqueue(call("merged", "Feeder 3", occurred_at=first.data["occurred_at"], caption_options=options))
+    assert m.data["caption_decks"] == snapshot
+    assert (await m.async_enqueue(first))["duplicate"]
+    resumed = FeedingVideoNotifications(hass)
+    resumed.store.async_load = AsyncMock(return_value=copy.deepcopy(m.data))
+    resumed.store.async_save = AsyncMock(); resumed._start_worker = Mock()
+    await resumed.async_setup()
+    phrases = [chosen]
+    for index in range(2):
+        phrases.append(resumed._caption({"caption_options": options, "telegram_config_entry_id": "telegram-entry"}))
+    assert len(set(phrases)) == 3
+    # At a new cycle boundary the last phrase still must not repeat.
+    deck = next(iter(resumed.data["caption_decks"].values()))
+    deck["remaining"], deck["last"] = [], options[-1]
+    with patch("custom_components.pet_feeder_local.feeding_video.secrets.SystemRandom"):
+        assert resumed._caption(first.data) != options[-1]
+    resumed.data["caption_decks"] = {str(n): {} for n in range(16)}
+    resumed._caption(first.data)
+    assert len(resumed.data["caption_decks"]) == 16
+
+
+@pytest.mark.parametrize("changes", [
+    {"detail_cameras": ["one"]}, {"detail_cameras": ["one", "one"]},
+    {"detail_cameras": ["one", "../two"]}, {"detail_cameras": ["one", "comederos"]},
+    {"caption_options": ["  "]}, {"caption_options": ["x" * 501]}, {"caption_options": ["x"] * 101},
+    {"record_detail_cameras": True},
+])
+async def test_invalid_collage_and_caption_plans_do_not_reach_network(hass, changes):
+    m = await manager(hass)
+    with pytest.raises(ServiceValidationError): await m.async_enqueue(call(**changes))
+    assert not m.data["jobs"]
+
+
+async def test_different_collage_and_capture_plans_do_not_merge(hass):
+    m = await manager(hass)
+    await m.async_enqueue(call())
+    await m.async_enqueue(call("collage", detail_cameras=["left", "right"]))
+    await m.async_enqueue(call("capture", detail_cameras=["left", "right"], record_detail_cameras=True))
+    assert len(m.data["jobs"]) == 3
+
+
+async def test_collage_sends_one_local_file_and_cleans_only_owned_files(hass):
+    m = await manager(hass)
+    await m.async_enqueue(call(detail_cameras=["left", "right"]))
+    job = m.data["jobs"][0]; start, end = math.floor(job["start"]), math.ceil(job["end"])
+    responses = []
+    for camera in ["comederos", "left", "right"]: responses.extend(timeline(camera, start, end))
+    m._request = AsyncMock(side_effect=responses)
+    m.renderer.async_render = AsyncMock(); m.renderer.async_cleanup = AsyncMock()
+    sent = []
+    async def telegram(service):
+        sent.append(service.data)
+        assert job["phase"] == "sending"
+        return {"chats": [{"message_id": 1}]}
+    hass.services.async_register("telegram_bot", "send_video", telegram, supports_response=SupportsResponse.OPTIONAL)
+    assert await m._process(job)
+    assert len(sent) == 1 and sent[0]["file"].endswith(job["key"] + ".mp4") and "url" not in sent[0]
+    assert m._request.await_count == 6  # Read-only timeline inspection, no export POSTs.
+    m.renderer.async_cleanup.assert_awaited_once_with(job["key"])
+    m.renderer.async_render.assert_awaited_once()
+    job["phase"] = "ready"; m.renderer.async_render.reset_mock()
+    assert await m._process(job)
+    m.renderer.async_render.assert_not_awaited()  # Persisted ready file after restart.
+
+
+async def test_missing_footage_falls_back_instead_of_shifting_or_dropping_notification(hass):
+    m = await manager(hass)
+    await m.async_enqueue(call(detail_cameras=["left", "right"]))
+    job = m.data["jobs"][0]
+    m._request = AsyncMock(side_effect=[[], {"sequences": []}])
+    m.renderer.async_cleanup = AsyncMock()
+    assert await m._process(job) is False
+    assert job["collage_fallback"] and job["phase"] == "waiting" and not job["local_video"]
+    async def telegram(service): return {"chats": [{"message_id": 1}]}
+    hass.services.async_register("telegram_bot", "send_video", telegram, supports_response=SupportsResponse.OPTIONAL)
+    video = exported(job)
+    m._request = AsyncMock(side_effect=[{"success": True, "export_id": "comederos_test"}, video, video, {"success": True}])
+    assert await m._process(job)
+
+
+async def test_capture_windows_start_immediately_once_and_expire_without_ha(hass):
+    m = await manager(hass)
+    m._request = AsyncMock(side_effect=[{"success": True, "event_id": "capture-left"},
+                                        {"success": True, "event_id": "capture-right"}])
+    moment = (dt_util.utcnow() - timedelta(seconds=20)).isoformat()
+    await m.async_enqueue(call(detail_cameras=["left", "right"], record_detail_cameras=True, occurred_at=moment))
+    job = m.data["jobs"][0]
+    assert job["capture_events"] == {"left": "capture-left", "right": "capture-right"}
+    assert m._request.await_count == 2
+    for args in m._request.await_args_list:
+        assert args.args[2]["include_recording"] and 35 <= args.args[2]["pre_capture"] <= 36
+        assert 249 <= args.args[2]["duration"] <= 251
+    await m._capture_details(job)
+    assert m._request.await_count == 2
+    job["capture_attempted"] = ["left"]
+    m._request = AsyncMock(return_value={"success": True, "event_id": "capture-right"})
+    await m._capture_details(job)
+    assert m._request.await_count == 1 and "/right/" in m._request.await_args.args[1]
+
+
+@pytest.mark.parametrize("responses", [
+    [HomeAssistantError("uncertain"), {"success": False}],
+    [{"success": True}, {"success": False}],
+])
+async def test_unknown_capture_requests_are_not_blindly_repeated(hass, responses):
+    m = await manager(hass); m._request = AsyncMock(side_effect=responses)
+    await m.async_enqueue(call(detail_cameras=["left", "right"], record_detail_cameras=True,
+                              occurred_at=dt_util.utcnow().isoformat()))
+    await m._capture_details(m.data["jobs"][0])
+    assert m._request.await_count == 2 and len(m.data["jobs"]) == 1
+
+
+async def test_capture_prebuffer_expiry_never_creates_a_fake_past_window(hass):
+    m = await manager(hass); m._request = AsyncMock()
+    await m.async_enqueue(call(detail_cameras=["left", "right"], record_detail_cameras=True,
+                              occurred_at=(dt_util.utcnow()-timedelta(seconds=70)).isoformat()))
+    m._request.assert_not_awaited()
+
+
+async def test_pruning_failure_does_not_disable_feeder_controls_or_saved_jobs(hass):
+    m = FeedingVideoNotifications(hass)
+    m.store.async_load = AsyncMock(return_value=None)
+    m.renderer.async_prune = AsyncMock(side_effect=OSError())
+    m._start_worker = Mock()
+    await m.async_setup()
+    assert hass.services.has_service("pet_feeder_local", SERVICE)
 
 
 def exported(job, **changes):
@@ -215,6 +353,8 @@ async def test_http_status_redirect_boundary_and_read_cache_busting(hass):
     assert await m._request(job, "exports") == {"ok": True}
     args, kwargs = m.session.calls[0]
     assert "notification_read=" in args[1] and kwargs["allow_redirects"] is False
+    await m._request(job, "left/recordings?after=1000&before=1240")
+    assert "after=1000&before=1240&notification_read=" in m.session.calls[1][0][1]
     m.session = Session(Response(status=404))
     assert await m._request(job, "exports/missing", missing_ok=True) is None
     for status in (302, 500):

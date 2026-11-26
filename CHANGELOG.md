@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+
+- Add optional synchronized three-camera feeding collages: overhead view above two feeder views, one common recording interval, 25x playback and no audio.
+- Account for Frigate keyframe preroll and reject missing recording timelines. Fall back to the overhead view when a detail view is incomplete.
+- Support finite Frigate recording windows on the feeding event, with motion recording outside those windows. No continuous-recording or calendar changes are made by the action.
+- Add persisted shuffled caption decks, without repetition until the choices are exhausted and without consuming another phrase for merged events or retries.
+- Bound FFmpeg threads, runtime and file size; reap cancelled encoders and clean owned temporary files after sending or interruption.
+
 ## 0.5.0
 
 - Emit deduplicated scheduled-feeding events from passive MCU telemetry in overlay 0.2.1. Persist the event cursor and ignore stale reports; manual ACKs and calendar predictions are not feeding events.

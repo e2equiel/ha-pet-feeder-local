@@ -52,6 +52,19 @@ queue_feeding_video:
     caption:
       selector:
         text:
+    detail_cameras:
+      description: Optional list of exactly two Frigate camera names, displayed below the overhead camera from left to right. Requires complete recordings on all three cameras.
+      selector:
+        object:
+    record_detail_cameras:
+      description: Retain finite detail-camera recording windows immediately on the event. Requires a 60-second alert prebuffer and alert retention mode all in Frigate; leaves motion recording unchanged outside events.
+      default: false
+      selector:
+        boolean:
+    caption_options:
+      description: Optional list of up to 100 captions. A persisted shuffled deck avoids repetition until every phrase has been used.
+      selector:
+        object:
     pre_seconds:
       default: 15
       selector:

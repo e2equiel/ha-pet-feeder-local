@@ -10,7 +10,7 @@ The event cursor is saved before emission. Duplicate polls and HA reconnects do 
 
 The optional `pet_feeder_local.queue_feeding_video` action receives the event timestamp and ID. It saves a bounded queue before returning, combines reports from feeders within 45 seconds when they share a camera and Telegram destination, and captures from 15 seconds before to 225 seconds after the execution report by default. After a 20-second recording-settle margin, it requests an explicit Frigate 0.18 custom export with `setpts=0.04*PTS` and `-an`.
 
-The worker follows the returned export ID and waits for completion. Telegram fetches that exact file into memory through HA; there is no second persistent local video copy. After Telegram returns a chat/message response, the export and thumbnail are deleted through Frigate's ID-based API. The recording retention policy is unchanged.
+In single-camera mode, the worker follows the returned export ID and waits for completion. Telegram fetches that exact file into memory through HA; there is no second persistent local video copy. After Telegram returns a chat/message response, the export and thumbnail are deleted through Frigate's ID-based API. The action does not edit the recording retention policy.
 
 Failures produce a persistent HA notification. Cleanup is retained in the queue when Frigate is unavailable, and resumes after HA restarts. If HA stops during a Telegram send, its outcome is uncertain: the worker cleans up instead of blindly sending it again. The action does not inspect a folder's latest filename, depend on a folder-size sensor, retry a feeding command, or change any schedule.
 
@@ -40,3 +40,43 @@ max: 16
 ```
 
 Disable an older time/folder-triggered sender before testing exports so both paths cannot send the same video. Remove only exports whose ownership is established; do not empty a shared directory or remove unrelated manual exports.
+
+## Three-camera collage and varied captions (0.6.0)
+
+Add `detail_cameras: [feeder_left, feeder_right]` to the action. The main `camera` occupies a 1280×720 top pane; the two detail views occupy 640×360 panes below it. The final 1280×1080 H.264 video uses the same Frigate wall-clock interval on all three views, 25x playback and no audio. Keyframe preroll is trimmed independently. Small packet-boundary rounding is bounded to one output frame; actual recording gaps are rejected rather than silently moving a pane forward. Missing or unusable detail footage sends the overhead view instead and raises a persistent HA notification.
+
+Composition runs only for queued videos, using HA's existing FFmpeg dependency: one decoder thread per camera, two encoder threads, one filter thread, a 180-second timeout and a 48 MB output bound. HA needs an allowed, writable media directory. The temporary file is kept in a private `.pet_feeder_local_videos` directory, passed to Telegram locally, then removed. Interrupted sends are not repeated; owned cleanup resumes after restart, cancelled encoders are reaped, and orphaned temporary files are pruned. No publicly served video directory or extra runtime is required.
+
+For full detail-camera footage only around meals, configure those two Frigate cameras once, preserving their existing motion-retention days and alert-retention days:
+
+```yaml
+record:
+  enabled: true
+  continuous:
+    days: 0
+  motion:
+    days: 2
+  alerts:
+    pre_capture: 60
+    post_capture: 5
+    retain:
+      days: 2
+      mode: all
+```
+
+Restart Frigate once after applying this recording policy, then verify a complete interval while the scene has no motion. An accepted configuration update or event response alone does not prove that the recorder worker retained the frames.
+
+Then add `record_detail_cameras: true` to the action. It immediately requests finite `feeding_window` manual events through Frigate's supported API. Their duration includes a 45-second simultaneous-feeder margin; the exported interval remains the requested meal interval. The 60-second rolling prebuffer accommodates HA polling and the default 15-second lead-in. Outside these bounded windows, ordinary motion recording continues. The recording windows expire in Frigate even if HA restarts. Late requests cannot recover already discarded footage; an uncertain create request is not blindly repeated. Keep `feeding_window` as an alert label, not a detection label, so the configured alert retention applies. The helper neither changes Frigate configuration nor creates a scheduled-feeding bus event.
+
+Optional `caption_options` supplies up to 100 phrases. A persisted shuffled deck uses every choice before beginning a new cycle and avoids consecutive repeats across the boundary. Merging two feeders or resuming a job retains the same caption. All text is sent as plain text. For example, add these fields alongside the existing event timestamp, ID and Telegram destination:
+
+```yaml
+detail_cameras: [feeder_left, feeder_right]
+record_detail_cameras: true
+caption_options:
+  - Dinner is served.
+  - The feline buffet is open.
+  - Your majesties, the meal is ready.
+```
+
+The MCU remains responsible for meals. Capture, composition, caption choice and Telegram failure never trigger a feeding command.

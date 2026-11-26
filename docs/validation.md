@@ -1,5 +1,15 @@
 # Validation scope
 
+## Feeding collage validation — 2026-11-26
+
+On HA 2026.11.2 with Frigate 0.18.3, the three-camera renderer produced a 1280×1080 H.264 collage from one common 240-second interval: 9.6 seconds, 288 frames, no audio and about 3.1 MB. The user received the Telegram test and accepted the overhead-above/two-feeders-below layout. No food command or calendar write was used.
+
+The measured render on the existing two-vCPU HA VM took 43.1 seconds, 52.5 CPU seconds and approximately 250 MiB peak RSS. This is a short per-video workload, not a continuously running compositor. Actual capacity still depends on source resolution, codec and host contention.
+
+Finite recording events were separately tested with continuous retention disabled on the two detail cameras. Both cameras retained a complete four-minute interval, including 25/26 segments with zero detected motion and no recording gaps. After the bounded window and buffer, an idle observation period contained no new zero-motion recordings. Existing motion retention and camera enabled states were preserved; no global Frigate restart was needed.
+
+Backend tests cover per-camera preroll, incomplete-timeline fallback, caption-cycle persistence and merge behavior, immediate bounded capture requests, uncertain-create suppression, local-file ownership, interrupted sends, encoder cancellation, size/runtime limits and restart cleanup. Synthetic tests are separate from the observed recording and Telegram results above.
+
 As of 2026-11-25, three privately owned V330L-DU4L-VS units with original application 68.00.09 have been used for hardware verification. The earlier sections describe the initial test unit (Feeder 2); the [three-device supervised results](#three-device-supervised-validation-2026-11-25) describe the later active-feeder migrations and unified dashboard. The same application/flash profile was verified on all three. Full MCU revision identification remains limited to the initial unit.
 
 | Check | Evidence |

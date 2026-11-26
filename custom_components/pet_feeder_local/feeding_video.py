@@ -5,8 +5,11 @@ import asyncio
 import contextlib
 import copy
 import hashlib
+import json
 import logging
+import math
 import re
+import secrets
 import time
 from pathlib import PurePosixPath
 from typing import Any
@@ -23,10 +26,11 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .video_collage import CollageRenderer, timeline_offset
 
 _LOGGER = logging.getLogger(__name__)
 SERVICE = "queue_feeding_video"
-_ERRORS = (ClientError, TimeoutError, HomeAssistantError, ValueError, KeyError)
+_ERRORS = (ClientError, TimeoutError, HomeAssistantError, ValueError, KeyError, OSError, IndexError)
 
 
 class FeedingVideoNotifications:
@@ -40,9 +44,14 @@ class FeedingVideoNotifications:
         self.save_lock = asyncio.Lock()
         self.worker: asyncio.Task[None] | None = None
         self.stopping = False
+        self.renderer = CollageRenderer(hass)
 
     async def async_setup(self) -> None:
         self.data = await self.store.async_load() or self.data
+        try:
+            await self.renderer.async_prune({job["key"] for job in self.data["jobs"]})
+        except OSError:
+            _LOGGER.warning("Temporary video pruning failed; owned cleanup remains queued")
         self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self.async_stop)
         self.hass.services.async_register(DOMAIN, SERVICE, self.async_enqueue,
             schema=vol.Schema({
@@ -51,6 +60,10 @@ class FeedingVideoNotifications:
                 vol.Required("telegram_config_entry_id"): str,
                 vol.Optional("feeder_name", default="Pet feeder"): str,
                 vol.Optional("caption", default="Scheduled feeding · 25× · no audio"): str,
+                vol.Optional("detail_cameras", default=[]): vol.All([str], vol.Length(max=2)),
+                vol.Optional("record_detail_cameras", default=False): bool,
+                vol.Optional("caption_options", default=[]): vol.All(
+                    [vol.All(str, vol.Length(min=1, max=500))], vol.Length(max=100)),
                 vol.Optional("pre_seconds", default=15): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
                 vol.Optional("post_seconds", default=225): vol.All(vol.Coerce(int), vol.Range(min=1, max=600)),
             }), supports_response=SupportsResponse.OPTIONAL)
@@ -73,6 +86,8 @@ class FeedingVideoNotifications:
 
     async def async_enqueue(self, call: ServiceCall) -> dict[str, Any]:
         d = call.data
+        details = d.get("detail_cameras", [])
+        choices = d.get("caption_options", [])
         event_id = d["event_id"]
         url = urlsplit(d["frigate_url"])
         occurred = dt_util.parse_datetime(d["occurred_at"])
@@ -80,6 +95,10 @@ class FeedingVideoNotifications:
             or url.query or url.fragment or url.path not in ("", "/")
             or not re.fullmatch(r"[a-zA-Z0-9_-]{1,96}", event_id)
             or not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", d["camera"])
+            or (details and (len(details) != 2 or len(set([d["camera"], *details])) != 3
+                or any(not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", camera) for camera in details)))
+            or (d.get("record_detail_cameras") and not details)
+            or len(choices) > 100 or any(not c.strip() or len(c) > 500 for c in choices)
             or occurred is None or occurred.tzinfo is None):
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key="invalid_video_request")
         stamp = occurred.timestamp()
@@ -95,6 +114,10 @@ class FeedingVideoNotifications:
             if (job["phase"] == "waiting" and abs(stamp-job["occurred"]) <= 45
                 and (job["base"], job["camera"], job["telegram"]) ==
                     (endpoint, d["camera"], d["telegram_config_entry_id"])):
+                if job.get("detail_cameras", []) != details:
+                    continue
+                if job.get("record_detail_cameras", False) != d.get("record_detail_cameras", False):
+                    continue
                 job["start"] = min(job["start"], stamp-d["pre_seconds"])
                 job["end"] = max(job["end"], stamp+d["post_seconds"])
                 if d["feeder_name"] not in job["feeders"]:
@@ -105,18 +128,68 @@ class FeedingVideoNotifications:
             job = {"key": key, "name": "PF Notify " + key, "base": endpoint,
                 "camera": d["camera"], "telegram": d["telegram_config_entry_id"],
                 "occurred": stamp, "start": stamp-d["pre_seconds"], "end": stamp+d["post_seconds"],
-                "caption": d["caption"], "feeders": [d["feeder_name"]],
+                "caption": self._caption(d), "feeders": [d["feeder_name"]],
+                "detail_cameras": list(details),
+                "record_detail_cameras": d.get("record_detail_cameras", False),
                 "phase": "waiting", "export_id": None}
             self.data["jobs"].append(job)
         self.data["seen"] = (self.data["seen"] + [event_id])[-256:]
         await self._save()
+        await self._capture_details(job)
         self._start_worker()
         return {"queued": True, "duplicate": False, "job_id": job["key"]}
+
+    def _caption(self, data: Any) -> str:
+        """Persist a shuffled deck; merging/retrying never consumes a new phrase."""
+        options = list(dict.fromkeys(c.strip() for c in data.get("caption_options", [])))
+        if not options:
+            return str(data["caption"])
+        identity = hashlib.sha256(json.dumps([data["telegram_config_entry_id"], options]).encode()).hexdigest()[:24]
+        decks = self.data.setdefault("caption_decks", {})
+        if identity not in decks and len(decks) >= 16:
+            decks.pop(next(iter(decks)))
+        deck = decks.setdefault(identity, {"remaining": [], "last": None})
+        if not deck["remaining"]:
+            deck["remaining"] = options.copy()
+            secrets.SystemRandom().shuffle(deck["remaining"])
+            if len(options) > 1 and deck["remaining"][-1] == deck["last"]:
+                deck["remaining"][0], deck["remaining"][-1] = deck["remaining"][-1], deck["remaining"][0]
+        phrase = str(deck["remaining"].pop())
+        deck["last"] = phrase
+        return phrase
+
+    async def _capture_details(self, job: dict[str, Any]) -> None:
+        """Retain a finite recording window immediately, independently of rendering."""
+        if not job.get("record_detail_cameras") or job["end"] <= dt_util.utcnow().timestamp():
+            return
+        for camera in job.get("detail_cameras", []):
+            attempted = job.setdefault("capture_attempted", [])
+            if camera in attempted:
+                continue
+            # Persist before POST. An uncertain request is never blindly repeated;
+            # every server-side recording window has its own finite duration.
+            attempted.append(camera)
+            await self._save()
+            now = dt_util.utcnow().timestamp()
+            try:
+                pre = max(0, math.ceil(now - job["start"]))
+                if pre > 60:
+                    raise ValueError("Recording prebuffer has already elapsed")
+                response = await self._request(job, f"events/{camera}/feeding_window/create", {
+                    "include_recording": True, "pre_capture": pre,
+                    "duration": max(1, math.ceil(job["end"] - now) + 45),
+                    "sub_label": "PF Notify " + job["key"]})
+                if not response.get("success") or not response.get("event_id"):
+                    raise HomeAssistantError("Frigate did not acknowledge the recording window")
+                job.setdefault("capture_events", {})[camera] = response["event_id"]
+                await self._save()
+            except _ERRORS:
+                self._warn(job, "A detail-camera recording window could not be confirmed. Incomplete footage will use the overhead fallback.")
 
     async def _request(self, job: dict[str, Any], path: str, body: dict[str, Any] | None = None,
                        *, missing_ok: bool = False) -> Any:
         if body is None:
-            path += "?notification_read=" + str(time.monotonic_ns())
+            path += ("&" if "?" in path else "?") + "notification_read=" + str(time.monotonic_ns())
         async with asyncio.timeout(30):
             async with self.session.request("GET" if body is None else "POST",
                 job["base"] + "/api/" + path, json=body, allow_redirects=False) as response:
@@ -143,6 +216,9 @@ class FeedingVideoNotifications:
         return matches[0] if matches else None
 
     async def _cleanup(self, job: dict[str, Any]) -> bool:
+        if job.get("local_video"):
+            await self.renderer.async_cleanup(job["key"])
+            return True
         if not job["export_id"]:
             export = await self._find_export(job)
             if export is None:
@@ -168,8 +244,33 @@ class FeedingVideoNotifications:
 
     async def _process(self, job: dict[str, Any]) -> bool:
         if job["phase"] == "waiting":
+            await self._capture_details(job)
             while (remaining := job["end"] + 20-dt_util.utcnow().timestamp()) > 0:
                 await asyncio.sleep(min(remaining, 30))
+            if job.get("detail_cameras") and not job.get("collage_fallback"):
+                job["phase"], job["local_video"] = "rendering", True
+                await self._save()
+        if job["phase"] == "rendering":
+            start, end = math.floor(job["start"]), math.ceil(job["end"])
+            cameras = [job["camera"], *job["detail_cameras"]]
+            try:
+                offsets = []
+                for camera in cameras:
+                    recordings = await self._request(job, f"{camera}/recordings?after={start}&before={end}")
+                    vod = await self._request(job, f"vod/{camera}/start/{start}/end/{end}")
+                    offsets.append(timeline_offset(camera, recordings, vod, start, end))
+                await self.renderer.async_render(job["key"], job["base"], cameras, offsets, start, end)
+            except _ERRORS:
+                await self.renderer.async_cleanup(job["key"])
+                job["local_video"], job["collage_fallback"], job["phase"] = False, True, "waiting"
+                self._warn(job, "Collage unavailable or recording timeline incomplete. Sending the overhead view instead.")
+                await self._save()
+                return False
+            job["phase"] = "ready"
+            await self._save()
+        if job["phase"] == "ready":
+            await self._send(job, {"file": str(self.renderer.path(job["key"]))})
+        if job["phase"] == "waiting":
             job["phase"] = "creating"
             await self._save()
             # Explicit custom endpoint: the normal 0.18 API no longer takes
@@ -207,25 +308,26 @@ class FeedingVideoNotifications:
             if (export["camera"] != job["camera"] or export["name"] != job["name"]
                 or path.parent != PurePosixPath("/media/frigate/exports") or path.suffix != ".mp4"):
                 raise HomeAssistantError("Export ownership or path mismatch")
-            # Persist before Telegram. If HA dies during sending, cleanup resumes
-            # without blindly sending the same video a second time.
-            job["phase"] = "sending"
-            await self._save()
-            async with asyncio.timeout(120):
-                response = await self.hass.services.async_call("telegram_bot", "send_video", {
-                    "config_entry_id": job["telegram"], "url": job["base"] + "/exports/" + path.name,
-                    "parse_mode": "plain_text",
-                    "caption": job["caption"] + "\n" + ", ".join(job["feeders"])},
-                    blocking=True, return_response=True)
-            if not response or not response.get("chats"):
-                raise HomeAssistantError("Telegram did not return a delivery response")
-            job["phase"] = "sent"
-            await self._save()
+            await self._send(job, {"url": job["base"] + "/exports/" + path.name})
         elif job["phase"] == "sending":
             self._warn(job, "HA stopped during a Telegram send. Delivery is uncertain; the video was not resent.")
         job["phase"] = "cleanup"
         await self._save()
         return await self._cleanup(job)
+
+    async def _send(self, job: dict[str, Any], source: dict[str, str]) -> None:
+        # Persist before Telegram. An interrupted send is never blindly repeated.
+        job["phase"] = "sending"
+        await self._save()
+        async with asyncio.timeout(120):
+            response = await self.hass.services.async_call("telegram_bot", "send_video", {
+                "config_entry_id": job["telegram"], **source, "parse_mode": "plain_text",
+                "caption": job["caption"] + "\n" + ", ".join(job["feeders"])},
+                blocking=True, return_response=True)
+        if not response or not response.get("chats"):
+            raise HomeAssistantError("Telegram did not return a delivery response")
+        job["phase"] = "sent"
+        await self._save()
 
     async def _run(self) -> None:
         try:

@@ -77,7 +77,7 @@ A lost API connection makes entities unavailable and logs one failure/recovery t
 
 ## Actions and automation examples
 
-With overlay 0.2.1 and integration 0.5.0, observed MCU scheduled-row records emit `pet_feeder_local_scheduled_feeding`. Use that event to trigger notifications when the MCU executes a saved meal. Optional Frigate/Telegram video notifications support a persistent queue, silent 25x exports, simultaneous-feeder merging and ID-based cleanup. They never serve food. See [scheduled events and feeding videos](docs/feeding-notifications.md).
+With overlay 0.2.1 and integration 0.5.0 or newer, observed MCU scheduled-row records emit `pet_feeder_local_scheduled_feeding`. Use that event to trigger notifications when the MCU executes a saved meal. Optional Frigate/Telegram video notifications support a persistent queue, silent 25x video, simultaneous-feeder merging and owned-file cleanup. Version 0.6.0 adds synchronized three-camera collages, finite detail-camera recording windows and shuffled caption choices. These actions never serve food. See [scheduled events and feeding videos](docs/feeding-notifications.md).
 
 The integration exposes `pet_feeder_local.set_schedule` to replace up to eight rows. The bundled editor is the easiest interface. The action requires a loaded `config_entry_id`, the sensor's freshly read `revision`, and meal objects with `weekdays` (Sunday bit 0), `hour`, `minute`, `portions` and `enabled`. It detects conflicts and verifies readback. See [action reference and examples](docs/actions.md).
 

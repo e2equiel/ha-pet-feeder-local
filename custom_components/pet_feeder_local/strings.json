@@ -191,6 +191,18 @@
         },
         "post_seconds": {
           "name": "Seconds after feeding"
+        },
+        "detail_cameras": {
+          "name": "Detail cameras",
+          "description": "Exactly two Frigate camera names, shown below the overhead view from left to right."
+        },
+        "record_detail_cameras": {
+          "name": "Record complete detail-camera windows",
+          "description": "Request finite event recordings immediately. Requires a 60-second Frigate alert buffer and alert retention mode all."
+        },
+        "caption_options": {
+          "name": "Caption choices",
+          "description": "A list of phrases used in shuffled, persisted cycles without repetition."
         }
       }
     }

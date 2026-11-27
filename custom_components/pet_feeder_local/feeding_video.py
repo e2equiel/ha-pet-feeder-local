@@ -26,7 +26,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
-from .video_collage import CollageRenderer, timeline_offset
+from .video_collage import CollageRenderer, RecordingSpan, recording_intervals, timeline_offset
 
 _LOGGER = logging.getLogger(__name__)
 SERVICE = "queue_feeding_video"
@@ -254,12 +254,28 @@ class FeedingVideoNotifications:
             start, end = math.floor(job["start"]), math.ceil(job["end"])
             cameras = [job["camera"], *job["detail_cameras"]]
             try:
-                offsets = []
+                spans = []
                 for camera in cameras:
                     recordings = await self._request(job, f"{camera}/recordings?after={start}&before={end}")
-                    vod = await self._request(job, f"vod/{camera}/start/{start}/end/{end}")
-                    offsets.append(timeline_offset(camera, recordings, vod, start, end))
-                await self.renderer.async_render(job["key"], job["base"], cameras, offsets, start, end)
+                    available = []
+                    for left, right in recording_intervals(recordings, start, end):
+                        vod = await self._request(job, f"vod/{camera}/start/{left}/end/{right}", missing_ok=True)
+                        try:
+                            if vod is not None:
+                                offset = timeline_offset(camera, recordings, vod, left, right)
+                                available.append(RecordingSpan(left, right, offset))
+                        except (ValueError, KeyError, IndexError) as err:
+                            _LOGGER.info("Feeding video %s: unavailable VOD interval for %s: %s",
+                                job["key"], camera, type(err).__name__)
+                    spans.append(available)
+                if not any(spans):
+                    raise HomeAssistantError("No usable recording intervals for the collage")
+                await self.renderer.async_render(job["key"], job["base"], cameras, spans, start, end)
+                gaps = {camera: end - start - sum(span.end - span.start for span in plan)
+                    for camera, plan in zip(cameras, spans, strict=True)}
+                if any(gaps.values()):
+                    _LOGGER.info("Feeding video %s: collage includes unavailable seconds by camera: %s",
+                        job["key"], {camera: seconds for camera, seconds in gaps.items() if seconds})
             except _ERRORS:
                 await self.renderer.async_cleanup(job["key"])
                 job["local_video"], job["collage_fallback"], job["phase"] = False, True, "waiting"

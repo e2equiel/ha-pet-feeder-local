@@ -43,9 +43,11 @@ Disable an older time/folder-triggered sender before testing exports so both pat
 
 ## Three-camera collage and varied captions (0.6.0)
 
-Add `detail_cameras: [feeder_left, feeder_right]` to the action. The main `camera` occupies a 1280×720 top pane; the two detail views occupy 640×360 panes below it. The final 1280×1080 H.264 video uses the same Frigate wall-clock interval on all three views, 25x playback and no audio. Keyframe preroll is trimmed independently. Small packet-boundary rounding is bounded to one output frame; actual recording gaps are rejected rather than silently moving a pane forward. Missing or unusable detail footage sends the overhead view instead and raises a persistent HA notification.
+Add `detail_cameras: [feeder_left, feeder_right]` to the action. The main `camera` occupies a 1280×720 top pane; the two detail views occupy 640×360 panes below it. The final 1280×1080 H.264 video uses the same Frigate wall-clock interval on all three views, 25x playback and no audio. Keyframe preroll is trimmed independently. A "No recording" slate appears in a pane for unavailable periods, and the available views keep playing on the shared timeline. The slate uses Spanish when Home Assistant is configured in Spanish. If the collage cannot be rendered, the worker tries the overhead export and raises a persistent HA notification.
 
 Composition runs only for queued videos, using HA's existing FFmpeg dependency: one decoder thread per camera, two encoder threads, one filter thread, a 180-second timeout and a 48 MB output bound. HA needs an allowed, writable media directory. The temporary file is kept in a private `.pet_feeder_local_videos` directory, passed to Telegram locally, then removed. Interrupted sends are not repeated; owned cleanup resumes after restart, cancelled encoders are reaped, and orphaned temporary files are pruned. No publicly served video directory or extra runtime is required.
+
+If the detail cameras already record continuously, their saved footage is available without waiting for a recording window. A rolling 12-hour archive uses `continuous.days: 0.5` on each detail camera. Motion and alert retention can keep matching footage longer.
 
 For full detail-camera footage only around meals, configure those two Frigate cameras once, preserving their existing motion-retention days and alert-retention days:
 

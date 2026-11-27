@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Keep available views aligned in a feeding collage when Frigate has gaps. Mark the missing part of each view with a localized slate.
+
 ## 0.6.0
 
 - Add optional synchronized three-camera feeding collages: overhead view above two feeder views, one common recording interval, 25x playback and no audio.

@@ -121,7 +121,7 @@ async def test_missing_footage_falls_back_instead_of_shifting_or_dropping_notifi
     m = await manager(hass)
     await m.async_enqueue(call(detail_cameras=["left", "right"]))
     job = m.data["jobs"][0]
-    m._request = AsyncMock(side_effect=[[], {"sequences": []}])
+    m._request = AsyncMock(side_effect=[[], [], []])
     m.renderer.async_cleanup = AsyncMock()
     assert await m._process(job) is False
     assert job["collage_fallback"] and job["phase"] == "waiting" and not job["local_video"]
@@ -130,6 +130,30 @@ async def test_missing_footage_falls_back_instead_of_shifting_or_dropping_notifi
     video = exported(job)
     m._request = AsyncMock(side_effect=[{"success": True, "export_id": "comederos_test"}, video, video, {"success": True}])
     assert await m._process(job)
+
+
+async def test_unavailable_detail_keeps_other_views_and_sends_one_collage(hass):
+    m = await manager(hass)
+    await m.async_enqueue(call(detail_cameras=["left", "right"]))
+    job = m.data["jobs"][0]
+    start, end = math.floor(job["start"]), math.ceil(job["end"])
+    top, top_vod = timeline("comederos", start, end)
+    left, invalid_vod = timeline("left", start, end)
+    invalid_vod["sequences"] = []
+    m._request = AsyncMock(side_effect=[top, top_vod, left, invalid_vod, []])
+    m.renderer.async_render = AsyncMock()
+    m.renderer.async_cleanup = AsyncMock()
+    sent = []
+
+    async def telegram(service):
+        sent.append(service.data)
+        return {"chats": [{"message_id": 1}]}
+
+    hass.services.async_register("telegram_bot", "send_video", telegram, supports_response=SupportsResponse.OPTIONAL)
+    assert await m._process(job)
+    assert [len(plan) for plan in m.renderer.async_render.await_args.args[3]] == [1, 0, 0]
+    assert len(sent) == 1 and "file" in sent[0]
+    assert not job.get("collage_fallback")
 
 
 async def test_capture_windows_start_immediately_once_and_expire_without_ha(hass):

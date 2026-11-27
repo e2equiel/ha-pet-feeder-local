@@ -8,9 +8,16 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
-from custom_components.pet_feeder_local.video_collage import CollageRenderer, collage_command, timeline_offset
+from custom_components.pet_feeder_local.video_collage import (
+    CollageRenderer,
+    RecordingSpan,
+    collage_command,
+    recording_intervals,
+    timeline_offset,
+)
 
 KEY = "a" * 24
+FULL_SPANS = [[RecordingSpan(1000, 1240, 0)] for _ in range(3)]
 
 
 def test_public_media_mapping_never_becomes_the_video_cache(hass):
@@ -27,7 +34,7 @@ async def test_a_media_symlink_into_the_public_web_root_is_rejected(hass, tmp_pa
     with patch.object(hass.config, "path", return_value=str(public)), \
          patch.object(hass.config, "is_allowed_path", return_value=True):
         with pytest.raises(HomeAssistantError):
-            await renderer.async_render(KEY, "http://nvr", ["a", "b", "c"], [0, 0, 0], 1000, 1240)
+            await renderer.async_render(KEY, "http://nvr", ["a", "b", "c"], FULL_SPANS, 1000, 1240)
 
 
 def timeline(camera="overhead", start=1000, end=1240):
@@ -42,7 +49,8 @@ def test_keyframe_preroll_is_trimmed_on_a_common_wall_clock():
     rows, vod = timeline()
     assert timeline_offset("overhead", rows, vod, 1000, 1240) == 2
     args = collage_command("ffmpeg", "http://nvr.local:5000", ["overhead", "left", "right"],
-                           [2, 1, 3], 1000, 1240, Path("out.mp4"))
+                           [[RecordingSpan(1000, 1240, offset)] for offset in [2, 1, 3]],
+                           1000, 1240, Path("out.mp4"), Path("slate.png"))
     inputs = [args[i + 1] for i, arg in enumerate(args) if arg == "-i"]
     assert len(inputs) == 3 and all("/start/1000/end/1240/" in url for url in inputs)
     graph = args[args.index("-filter_complex") + 1]
@@ -51,6 +59,27 @@ def test_keyframe_preroll_is_trimmed_on_a_common_wall_clock():
     assert "1280:720" in graph and graph.count("640:360") >= 2
     assert "-an" in args and args[args.index("-t") + 1] == "9.600"
     assert args[args.index("-filter_complex_threads") + 1] == "1"
+
+
+def test_gap_and_missing_camera_preserve_the_shared_timeline():
+    start, end = 1000, 1240
+    coverage = [{"start_time": 995, "end_time": 1009}, {"start_time": 1018, "end_time": 1127},
+                {"start_time": 1128, "end_time": 1241}]
+    intervals = recording_intervals(coverage, start, end)
+    assert intervals == [(1000, 1009), (1018, 1127), (1128, 1240)]
+    _, first_vod = timeline("left", 1000, 1009)
+    assert timeline_offset("left", coverage, first_vod, 1000, 1009) == 2
+    assert recording_intervals(coverage, 1009, 1018) == []
+    plans = [[RecordingSpan(start, end, 0)], [RecordingSpan(a, b, 0) for a, b in intervals], []]
+    args = collage_command("ffmpeg", "http://nvr", ["top", "left", "right"], plans,
+                           start, end, Path("out.mp4"), Path("slate.png"))
+    inputs = [args[i + 1] for i, arg in enumerate(args) if arg == "-i"]
+    assert inputs.count("slate.png") == 3
+    assert any("/left/start/1018/end/1127/" in url for url in inputs)
+    assert not any("/right/" in url for url in inputs)
+    graph = args[args.index("-filter_complex") + 1]
+    assert "concat=n=5:v=1:a=0,settb=1/30,setpts=N[v1]" in graph
+    assert "trim=end_frame=288" in graph
 
 
 @pytest.mark.parametrize("problem", ["gap", "tail", "camera", "vod_short", "vod_late"])
@@ -93,7 +122,7 @@ async def render(hass, tmp_path, *, size=1500, returncode=0, failure=None, allow
     with patch.object(hass.config, "is_allowed_path", return_value=allowed), \
          patch("custom_components.pet_feeder_local.video_collage.get_ffmpeg_manager", return_value=SimpleNamespace(binary="ffmpeg")), \
          patch("custom_components.pet_feeder_local.video_collage.asyncio.create_subprocess_exec", side_effect=spawn) as launch:
-        result = await renderer.async_render(KEY, "http://nvr.local:5000", ["a", "b", "c"], [0, 0, 0], 1000, 1240)
+        result = await renderer.async_render(KEY, "http://nvr.local:5000", ["a", "b", "c"], FULL_SPANS, 1000, 1240)
     return renderer, process, result, launch
 
 
@@ -119,5 +148,5 @@ async def test_cancellation_kills_and_reaps_the_encoder(hass, tmp_path):
          patch("custom_components.pet_feeder_local.video_collage.get_ffmpeg_manager", return_value=SimpleNamespace(binary="ffmpeg")), \
          patch("custom_components.pet_feeder_local.video_collage.asyncio.create_subprocess_exec", return_value=process):
         with pytest.raises(asyncio.CancelledError):
-            await renderer.async_render(KEY, "http://nvr", ["a", "b", "c"], [0, 0, 0], 1000, 1240)
+            await renderer.async_render(KEY, "http://nvr", ["a", "b", "c"], FULL_SPANS, 1000, 1240)
     process.kill.assert_called_once(); process.wait.assert_awaited_once()

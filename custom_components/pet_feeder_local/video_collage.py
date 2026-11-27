@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import re
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -15,6 +17,37 @@ from homeassistant.exceptions import HomeAssistantError
 
 _LOGGER = logging.getLogger(__name__)
 _KEY = re.compile(r"[0-9a-f]{24}")
+_MAX_SECTIONS_PER_CAMERA = 4
+
+
+@dataclass(frozen=True)
+class RecordingSpan:
+    """A verified, unbroken VOD interval and its keyframe preroll."""
+
+    start: int
+    end: int
+    offset: float
+
+
+def recording_intervals(recordings: list[dict[str, Any]], start: int, end: int) -> list[tuple[int, int]]:
+    """Find bounded continuous intervals, preserving absolute times across gaps."""
+    merged: list[tuple[float, float]] = []
+    for row in sorted(recordings, key=lambda row: row["start_time"]):
+        left = max(float(start), float(row["start_time"]))
+        right = min(float(end), float(row["end_time"]))
+        if right <= left:
+            continue
+        if merged and left <= merged[-1][1] + .35:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], right))
+        else:
+            merged.append((left, right))
+    # Frigate VOD accepts whole seconds here. Round inward except for the
+    # small segment timestamp tolerance also used by timeline_offset.
+    intervals = [(math.ceil(left - .35), math.floor(right + .35)) for left, right in merged]
+    intervals = [(left, right) for left, right in intervals if right > left]
+    # A severely fragmented stream must not spawn unbounded decoders. Keep
+    # its longest usable intervals and mark the rest as unavailable.
+    return sorted(sorted(intervals, key=lambda interval: interval[0] - interval[1])[:_MAX_SECTIONS_PER_CAMERA])
 
 
 def timeline_offset(camera: str, recordings: list[dict[str, Any]], vod: dict[str, Any],
@@ -27,6 +60,8 @@ def timeline_offset(camera: str, recordings: list[dict[str, Any]], vod: dict[str
         if row["start_time"] > cursor + .35:
             raise ValueError("Recording timeline has a gap")
         cursor = max(cursor, row["end_time"])
+        if cursor >= end - .35:
+            break
     if cursor < end - .35:
         raise ValueError("Recording timeline ends before the requested interval")
     clip = vod["sequences"][0]["clips"][0]
@@ -45,20 +80,46 @@ def timeline_offset(camera: str, recordings: list[dict[str, Any]], vod: dict[str
     return float(max(0., offset))
 
 
-def collage_command(binary: str, base: str, cameras: list[str], offsets: list[float],
-                    start: int, end: int, output: Path) -> list[str]:
+def collage_command(binary: str, base: str, cameras: list[str], spans: list[list[RecordingSpan]],
+                    start: int, end: int, output: Path, slate: Path) -> list[str]:
     """Use one common wall-clock interval and 25x playback for every pane."""
     args = [binary, "-hide_banner", "-nostdin", "-loglevel", "error", "-y",
         "-filter_complex_threads", "1"]
     filters = []
     duration = end - start
-    for index, (camera, offset) in enumerate(zip(cameras, offsets, strict=True)):
-        args += ["-threads", "1", "-rw_timeout", "15000000", "-protocol_whitelist", "http,tcp",
-            "-i", f"{base}/vod/{camera}/start/{start}/end/{end}/index.m3u8"]
-        width, height = (1280, 720) if index == 0 else (640, 360)
-        filters.append(f"[{index}:v]setpts=PTS-STARTPTS,trim=start={offset:.3f}:duration={duration},"
-            f"setpts=0.04*(PTS-STARTPTS),fps=30,scale={width}:{height}:force_original_aspect_ratio=decrease,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,tpad=stop_mode=clone:stop_duration=0.04[v{index}]")
+    input_index = 0
+    for pane, (camera, intervals) in enumerate(zip(cameras, spans, strict=True)):
+        width, height = (1280, 720) if pane == 0 else (640, 360)
+        sections: list[tuple[int, int, RecordingSpan | None]] = []
+        cursor = start
+        for recording in intervals:
+            if recording.start > cursor:
+                sections.append((cursor, recording.start, None))
+            sections.append((recording.start, recording.end, recording))
+            cursor = recording.end
+        if cursor < end:
+            sections.append((cursor, end, None))
+        labels = []
+        for left, right, span in sections:
+            # Quantize boundaries on the common output frame grid. Each pane
+            # therefore has the same frame count even with different gaps.
+            frames = round((right - start) * 30 / 25) - round((left - start) * 30 / 25)
+            label = f"p{input_index}"
+            labels.append(f"[{label}]")
+            if span is None:
+                args += ["-threads", "1", "-f", "image2", "-framerate", "30", "-i", str(slate)]
+                source = f"tpad=stop_mode=clone:stop={frames}"
+            else:
+                args += ["-threads", "1", "-rw_timeout", "15000000", "-protocol_whitelist", "http,tcp",
+                    "-i", f"{base}/vod/{camera}/start/{left}/end/{right}/index.m3u8"]
+                source = (f"setpts=PTS-STARTPTS,trim=start={span.offset:.3f}:duration={right-left},"
+                    "setpts=0.04*(PTS-STARTPTS),fps=30,tpad=stop_mode=clone:stop=1")
+            filters.append(f"[{input_index}:v]{source},trim=end_frame={frames},"
+                f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p,setpts=PTS-STARTPTS[{label}]")
+            input_index += 1
+        joined = f"concat=n={len(labels)}:v=1:a=0," if len(labels) > 1 else ""
+        filters.append(f"{''.join(labels)}{joined}settb=1/30,setpts=N[v{pane}]")
     filters += ["[v1][v2]hstack=inputs=2:shortest=1[bottom]",
         "[v0][bottom]vstack=inputs=2:shortest=1,format=yuv420p[out]"]
     return args + ["-filter_complex", ";".join(filters), "-map", "[out]", "-an", "-c:v", "libx264",
@@ -98,7 +159,7 @@ class CollageRenderer:
             self.path(key, partial=True).unlink(missing_ok=True)
         await self.hass.async_add_executor_job(clean)
 
-    async def async_render(self, key: str, base: str, cameras: list[str], offsets: list[float],
+    async def async_render(self, key: str, base: str, cameras: list[str], spans: list[list[RecordingSpan]],
                            start: int, end: int) -> Path:
         output, partial = self.path(key), self.path(key, partial=True)
         def private_and_allowed() -> bool:
@@ -108,7 +169,9 @@ class CollageRenderer:
             raise HomeAssistantError("The HA media directory is not allowed for Telegram files")
         await self.hass.async_add_executor_job(lambda: self.directory.mkdir(parents=True, exist_ok=True, mode=0o700))
         await self.async_cleanup(key)
-        args = collage_command(get_ffmpeg_manager(self.hass).binary, base, cameras, offsets, start, end, partial)
+        language = "es" if self.hass.config.language.split("-")[0] == "es" else "en"
+        slate = Path(__file__).with_name(f"recording-unavailable-{language}.png")
+        args = collage_command(get_ffmpeg_manager(self.hass).binary, base, cameras, spans, start, end, partial, slate)
         began = time.monotonic()
         process = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL)
